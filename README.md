@@ -213,11 +213,10 @@ Una clase pública que tiene como propiedades un `Id`, `Name` y `CurrentStock`
 > }
 > `````
 
-Y lo que queremos es poder hacer una serie de acciones con la clase que hemos creado. En este caso, son productos, así que queremos **añadir productos a nuestro inventario**, por ejemplo.
+2. Ahora, supongamos que queremos es poder hacer una serie de acciones con la clase que hemos creado. En este caso, como son productos, queremos poder **añadir productos a nuestro inventario**.
 La manera común sería hacerlo en un archivo distinto con otro nombre: quizás una clase llamada `ProductInventoryRepository` donde desarrollaramos esa acción, por ejemplificar.
 
 Sin embargo, si seguimos el patrón CQRS, lo adecuado será **crearnos una clase `Handler` que maneje estas vicisitudes**:
-
 
 ``````csharp
 public class ProductsCommandHandler :
@@ -238,6 +237,26 @@ public class ProductsCommandHandler :
 }
 ``````
 
+> 👀 A diferencia de en otros lenguajes, en `C#` el **tipo de la variable** se coloca **a la izquierda**, mientras que en otros, como `Typescript`, se tipan **en la derecha**:
+> | C# | Typescript |
+> |-----------|-----------|
+> | ICommandHandler<Product> _repository; | _repository: ICommandHandler<Product> |
+
+
+> 📝 En la documentación oficial de de Microsoft, no se nos desarrolla la interfaz `ICommandHandler`, así que vamos a hacer una nosotros para complementar la documentación.
+
+````csharp
+public interface ICommandHandler<TCommand>
+{
+    void Handle(TCommand command);
+}
+
+````
+
+La interfaz de `ICommandHandler` nos proporciona el método `Handle`, con el que realizaremos las acciones como la que queríamos crear antes: **añadir un producto al inventario**.
+
+
+Esto sería el **vistazo general** del patrón **CQRS**. Más adelante profundizaremos en el mismo y añadiremos más contenido. 
 
 ## TODO Instalación Swagger
 
