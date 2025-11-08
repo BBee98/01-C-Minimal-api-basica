@@ -258,7 +258,112 @@ La interfaz de `ICommandHandler` nos proporciona el método `Handle`, con el que
 
 Esto sería el **vistazo general** del patrón **CQRS**. Más adelante profundizaremos en el mismo y añadiremos más contenido. 
 
+> 👉 También puedes leer más sobre CQRS aquí: https://ironpdf.com/blog/net-help/cqrs-pattern-csharp/
+
+
 ## TODO Instalación Swagger
 
 > 🌏 https://learn.microsoft.com/es-es/aspnet/core/tutorials/min-web-api?view=aspnetcore-9.0&tabs=visual-studio-code#install-swagger-tooling
 
+### 3.1 Creación de la estructura
+
+> 🌏 https://www.milanjovanovic.tech/blog/vertical-slice-architecture
+
+Vamos a crear los archivos necesarios para hacer una petición a la base de datos del INE para poder recibir las operaciones disponibles sobre las que suelo buscar información. Teniendo en cuanta lo desarrollado anteriormente (**VSA** y **CQRS**) deberíamos generar una estructura de archivos muy parecida a esto:
+
+````csharp
+c-basic-api/
+└── Entities/
+    └── ActivityOperationModel.cs/
+└── INE/
+    └── AvailableOperations/
+        └── GetAvailableOperationsQuery.cs
+         └── GetAvailableOperationsQueryHandler.cs
+````
+- **Entities**: donde vamos a guardar las entidades que vamos a utilizar en el proyecto.
+- **ActivityOperationModel**: La definición del objeto protagonista de la feature.
+- **INE**: como nombre de la Feature donde vamos a englobar las cosas.
+- **AvailableOperations**: Como otra feature. Hay una tabla en el INE que se llama OPERACIONES_DISPONIBLES, así que trataremos las tablas como `features` dentro de nuestro proyecto.
+- **GetAvailableOperationsQuery**: Será **la interfaz** que defina el/los método/s del handler 👇🏻.
+- **GetAvailableOperationsQueryHandler**: El handler que realizará la llamada http para obtener los datos del INE y que implementará la interfaz. 
+
+Si ponemos en el navegador: ``https://servicios.ine.es/wstempus/js/ES/OPERACIONES_DISPONIBLES`` veremos que nos sale una lista de operaciones disponibles.
+Vamos a basarnos en uno de los objetos que se nos devuelve dentro de esta lista:
+
+````json
+ {
+    "Id": 4,
+    "Cod_IOE": "30147",
+    "Nombre": "Estadística de Efectos de Comercio Impagados",
+    "Codigo": "EI"
+  }
+````
+
+Para definir el modelo de `ActivityOperation`:
+
+````csharp
+public interface IActivityOperationModel
+{
+    public string Id { get; }
+    public string Cod_IOE { get; }
+    public string Name { get; }
+    public string Code { get; }
+}
+````
+
+🦄Vamos a hablar sobre **dos detalles** importantes de las interfaces:
+
+1. 📋 La nomenclatura 
+
+Si nos fijamos en la documentación hallada en la mayoría de los sitios (dejo a continuación dos ejemplos):
+
+> 🌏https://education.launchcode.org/csharp-web-dev-curriculum/interfaces-and-polymorphism/reading/interfaces/index.html
+> 🌏https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/interfaces
+
+Veremos que **el nombre de la interfaz va precedido de la letra ``I``**. Esto es para poder **identificarla rápidamente como interfaz**.
+En el ``typescript`` no es una práctica común, pero en backend (en este caso, en C#) sí es algo más usual. Sin embargo, es cierto que en otros lenguajes, como
+``Go``, tampoco es común usar la letra ``I`` para identificar una interfaz (https://go.dev/tour/methods/9).
+
+2. Funciones de acceso (``{get; set; }``
+
+En los lenguajes de backend (al menos, en Java, que es lo que estudié en su momento), cuando declaras una clase que actúa como el modelo (o representación) de un objeto,
+las propiedades del objeto se declaran como ``private`` y utilizas lo que se llaman **funciones de acceso** para **acceder** (valga la redundancia) a las mismas. Por ejemplo:
+
+````
+public interface Vehiculo {
+    private String matricula = "";
+    
+    public String getMatricula() {
+        return matricula;
+    }
+    public void setMatricula(String matricula) {
+        this.matricula = matricula;
+    }
+}
+````
+
+En este ejemplo, basado en el lenguaje de ``java``, tenemos una propiedad de clase llamada ``matrícula``, que es de tipo ``string``. Esa propiedad es **privada**, pero podemos
+"acceder a ella" gracias a dos funciones de acceso: ``getMatricula()`` y ``setMatricula()``, lo que se llaman ``setter`` y ``getter``. 
+
+🤔 ¿Por qué no hacemos que la propiedad matrícula sea pública? Porque eso violaría el ``principio de encapsulamiento``, una de las bases de la programación
+orientada a objetos (POO) (https://www.reddit.com/r/csharp/comments/ye4kmz/why_exactly_is_it_bad_to_have_public_fields/).
+
+> 📝 _Regla de encapsulamiento_: https://medium.com/@AIbatros/c-encapsulation-6b59be896312
+
+Privatizar la propiedad nos da un **mayor control** sobre **qué acciones queremos regular sobre ella**. Si fuera pública, cualquiera podría obtener/sobreescribir la información; sin embargo, si
+la privatizamos, podremos definir mediante las funciones de acceso u otras **qué operaciones permitimos hacer sobre las propiedades**.
+
+Por tanto, si en nuestra interfaz de C# escribimos:
+
+````csharp
+public interface IActivityOperationModel
+{
+    public string Id { get; }
+}
+````
+
+Significa que **solo permitimos obtener la propiedad**, no permitimos modificarla. Y en este caso solo permitimos obtenerla porque `ActivityOperationModel` solo pretende ser
+una **representación en código** del objeto que nos llega desde la petición realizada al INE. En caso de que quisiéramos poder modificar alguna propiedad del objeto, sería más adecuado
+crear **otro modelo** que represente **el objeto que almacenamos nosotros, como servidor, en la base de datos** (o donde sea). Mantener separados
+los objetos según representen a uno **llegado desde una petición externa** a uno que se encuentra **almacenado en , lo que diríamos, **nuestro dominio conocido**, evita problemas futuros. Estos aspectos se desarrollarán mejor cuando hablemos de los **DTO**, pero de momento
+simplemente entendamos que, al ser un objeto **ajeno** a nuestro entorno, no debemos modificarlo.

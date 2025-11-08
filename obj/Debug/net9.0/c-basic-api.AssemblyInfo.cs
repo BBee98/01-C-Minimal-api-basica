@@ -13,60 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("c-basic-api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                             
-                                                                              [assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6cd9575f04937fb248e3da777b211ce07538404c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3d136c1a9e292d5c02b790d0ff67d3dc7a0abc1b")]
 [assembly: System.Reflection.AssemblyProductAttribute("c-basic-api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("c-basic-api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
