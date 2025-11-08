@@ -267,6 +267,8 @@ Esto sería el **vistazo general** del patrón **CQRS**. Más adelante profundiz
 
 ### 3.1 Creación de la estructura
 
+#### El modelo de datos
+
 > 🌏 https://www.milanjovanovic.tech/blog/vertical-slice-architecture
 
 Vamos a crear los archivos necesarios para hacer una petición a la base de datos del INE para poder recibir las operaciones disponibles sobre las que suelo buscar información. Teniendo en cuanta lo desarrollado anteriormente (**VSA** y **CQRS**) deberíamos generar una estructura de archivos muy parecida a esto:
@@ -277,15 +279,17 @@ c-basic-api/
     └── ActivityOperationModel.cs/
 └── INE/
     └── AvailableOperations/
-        └── GetAvailableOperationsQuery.cs
-         └── GetAvailableOperationsQueryHandler.cs
+        └── AvailableOperationsQuery.cs
+         └── AvailableOperationsQueryHandler.cs
 ````
 - **Entities**: donde vamos a guardar las entidades que vamos a utilizar en el proyecto.
 - **ActivityOperationModel**: La definición del objeto protagonista de la feature.
 - **INE**: como nombre de la Feature donde vamos a englobar las cosas.
 - **AvailableOperations**: Como otra feature. Hay una tabla en el INE que se llama OPERACIONES_DISPONIBLES, así que trataremos las tablas como `features` dentro de nuestro proyecto.
-- **GetAvailableOperationsQuery**: Será **la interfaz** que defina el/los método/s del handler 👇🏻.
-- **GetAvailableOperationsQueryHandler**: El handler que realizará la llamada http para obtener los datos del INE y que implementará la interfaz. 
+- **AvailableOperationsQuery**: Será **la interfaz** que defina el/los método/s del handler 👇🏻.
+- **AvailableOperationsQueryHandler**: El handler que realizará la llamada http para obtener los datos del INE y que implementará la interfaz. 
+
+> ‼️No hace falta utilizar las palabras ``Get`, `Post`, `Put` o semejantes, porque esa información **ya nos la proporciona el uso de query o command** como nombres.
 
 Si ponemos en el navegador: ``https://servicios.ine.es/wstempus/js/ES/OPERACIONES_DISPONIBLES`` veremos que nos sale una lista de operaciones disponibles.
 Vamos a basarnos en uno de los objetos que se nos devuelve dentro de esta lista:
@@ -367,3 +371,39 @@ una **representación en código** del objeto que nos llega desde la petición r
 crear **otro modelo** que represente **el objeto que almacenamos nosotros, como servidor, en la base de datos** (o donde sea). Mantener separados
 los objetos según representen a uno **llegado desde una petición externa** a uno que se encuentra **almacenado en , lo que diríamos, **nuestro dominio conocido**, evita problemas futuros. Estos aspectos se desarrollarán mejor cuando hablemos de los **DTO**, pero de momento
 simplemente entendamos que, al ser un objeto **ajeno** a nuestro entorno, no debemos modificarlo.
+
+#### La interfaz de consulta
+
+Al igual que hemos hecho una interfaz definiendo el modelo de datos que vamos a recibir por parte del INE, toca definir la interfaz de la query que vamos a usar para obtenerlos.
+
+> 👉Recordemos que, en el patrón ``CQRS``, la `Q` significa `query`, y es el término que debemos utilizar cuando hacemos una **petición de datos** sin modificar nada.
+
+> Tipos primitivos en C#: https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/reference-types
+> Los arrays: https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/arrays
+
+Por tanto, quedaría así:
+
+```csharp
+public interface IAvailableOperationsQueryHandler
+{
+    public IActivityOperationModel[] Handle();
+}
+```
+
+> 📝 Notas importantes 
+> 1. Usar `I` como letra precedente a las interfaces.
+> 2. Definir la propiedad de acceso como ``public`` y utilizar ``Handle`` como nombre de la función asociada al handler.
+
+#### El handler
+
+Ahora que ya tenemos los dos "pre-constructores" (la interfaz asociada al modelo y la asociada a la definición de la propia query) podemos definir la query en sí misma; es decir, la clase:
+
+````csharp
+public class AvailableOperationsQueryHandler: IAvailableOperationsQueryHandler
+{
+    public IActivityOperationModel[] Handle()
+    {
+        throw new NotImplementedException();
+    }
+}
+````
