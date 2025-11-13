@@ -407,3 +407,81 @@ public class AvailableOperationsQueryHandler: IAvailableOperationsQueryHandler
     }
 }
 ````
+
+### 3.2 La petición http: HttpClient en .NET
+
+Al igual que ocurre en frameworks como ``angular``, `.NET` pone a nuestra disposición el objeto `HttpClient` para poder realizar nuestras peticiones http.
+La manera más **simple** de realizar una llamada es la siguiente:
+
+````csharp
+   HttpClient client = new HttpClient();
+   client.Dispose();
+````
+
+1. La primera línea crea **una instancia** para el objeto ``HttpClient`` con el cual realizaremos la petición.
+2. La segunda, da por concluida la petición.
+
+El problema es que **cada nueva instancia de HttpClient crea una nueva conexión**:
+
+> 🌏 https://medium.com/@iamprovidence/http-client-in-c-best-practices-for-experts-840b36d8f8c4
+
+> "_With each HttpClient instance a new HTTP connection is created. But even when the client is disposed, the TCP socket is not immediately released. If your application constantly creates new connections, it can lead to the exhaustion of available ports."_
+
+Esto significa que, en verdad, ``HttpClient`` está pensado **para ser instanciado una vez por aplicación**.
+
+Existen varias maneras de **solucionar este hecho** que se describen en el post mencionado anteriormente:
+
+1. Utilizar una instancia **estática** de ``HttpClient`` (`static instance`): 
+
+```csharp
+static readonly HttpClient client = new HttpClient();
+
+app.MapGet("/", async () =>
+{
+    var response = await client.GetAsync("https://dummyjson.com/quotes");
+              . . .
+});
+```
+
+🚧 Sin embargo, si el DNS cambia regularmente, el servidor **no realizará esos cambios**, porque el DNS se estableció una única vez al crear la instancia ``HtppClient``.
+
+2. Por ello existe la segunda opción (siendo, además, la propuesta oficial de Microsoft): El ``HttpClientFactory``.
+
+> 🌏 https://learn.microsoft.com/es-es/dotnet/core/extensions/httpclient-factory
+
+Las ventajas que nos ofrece (aparte de eliminar el problema de la reasignación del DNS que describíamos en el punto anterior 👆) son **reutilización**, integración con "pool de peticiones" (más adelante desarrollaremos este punto) y configuración customizada.
+
+
+#### Creación de HttpClientFactory
+
+> 📝 https://medium.com/asp-dotnet/why-use-httpclientfactory-1fa857db78de
+
+Si nos fijamos en el ejemplo que nos proporciona la página oficial de [microsoft](https://learn.microsoft.com/es-es/dotnet/core/extensions/httpclient-factory):
+
+```csharp
+using Shared;
+using NamedHttp.Example;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
+HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
+
+string? httpClientName = builder.Configuration["TodoHttpClientName"];
+ArgumentException.ThrowIfNullOrEmpty(httpClientName);
+
+builder.Services.AddHttpClient(
+    httpClientName,
+    client =>
+    {
+        // Set the base address of the named client.
+        client.BaseAddress = new Uri("https://jsonplaceholder.typicode.com/");
+
+        // Add a user-agent default request header.
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("dotnet-docs");
+    });
+```
+
+Vemos que la configuración de ``HttpClientFactory`` se realiza en el archivo principal de la aplicación: ``Program.cs``.
+
+
