@@ -273,7 +273,7 @@ Esto sería el **vistazo general** del patrón **CQRS**. Más adelante profundiz
 
 Vamos a crear los archivos necesarios para hacer una petición a la base de datos del INE para poder recibir las operaciones disponibles sobre las que suelo buscar información. Teniendo en cuanta lo desarrollado anteriormente (**VSA** y **CQRS**) deberíamos generar una estructura de archivos muy parecida a esto:
 
-````csharp
+````
 c-basic-api/
 └── Entities/
     └── ActivityOperationModel.cs/
@@ -282,6 +282,7 @@ c-basic-api/
         └── AvailableOperationsQuery.cs
          └── AvailableOperationsQueryHandler.cs
 ````
+
 - **Entities**: donde vamos a guardar las entidades que vamos a utilizar en el proyecto.
 - **ActivityOperationModel**: La definición del objeto protagonista de la feature.
 - **INE**: como nombre de la Feature donde vamos a englobar las cosas.
@@ -482,6 +483,166 @@ builder.Services.AddHttpClient(
     });
 ```
 
-Vemos que la configuración de ``HttpClientFactory`` se realiza en el archivo principal de la aplicación: ``Program.cs``.
+La configuración de ``HttpClientFactory`` se realiza en el archivo principal de la aplicación: ``Program.cs``. Aunque tiene ``factory`` en el nombre, realmente es
+una nomenclatura utilizada por ``.NET`` por detrás, pero no es que nosotros tengamos que hacer un patrón de factoría (`factory pattern`) por detrás.
+
+📋Vamos a estudiar por línea qué es este código:
+
+> 🌏 https://dev.to/airarrazabald/utilizando-httpclient-con-ihttpclientfactory-en-net-6-2iem
+
+Gracias a este artículo de Medium podemos comprender mejor de qué trata esto.
+
+Microsoft define ``HttpClientFactory`` como:
+
+> [...] Una interfaz que se usa para configurar y crear HttpClient instancias en una aplicación mediante inserción de dependencias (DI). También proporciona extensiones para el middleware basado en Polly a fin de aprovechar los controladores de delegación en HttpClient.
+
+Que esto es lo que ya sabíamos: nos permite crear una instancia de ``HttpClient`` que sea reutiliizable y que no nos bloquee cuando se produzcan cambios en la configuración.
+
+ En esta línea:
+
+```
+string? httpClientName = builder.Configuration["TodoHttpClientName"];
+ArgumentException.ThrowIfNullOrEmpty(httpClientName);
+```
+
+Se crea una variable llamada ``httpClientName`` donde indicamos que ésta _podría ser_ de tipo `string` (no es un `OR`, sino más bien es como decir "creo que esta variable es de tipo `string` pero no estoy seguro).
+
+Por otro lado, esta instrucción ``builder.Configuration["TodoHttpClientName"]`` dice que "queremos obtener la configuración correspondiente a `TodoHttpClientName`".
+
+> ‼️Es importante que aclaremos que `TodoHttpClientName` ahora mismo *no existe en el fichero `appsettings.json`.
+> Simplemente vamos a asumir que esa conexión existe, y más adelante veremos cómo se crea en el fichero en cuestión.
+
+> _En una aplicación ASP.NET Core, builder.Configuration (que es de tipo IConfiguration) es el lugar central donde se almacenan todos los ajustes de configuración._ (Fuente: Gemini 2.5 Pro).
+
+Y la pregunta es: **¿De dónde sale esta configuración?**
+
+Si nos fijamos en los ficheros de nuestra aplicación, hay uno llamado ``appsettings.json``.
+
+> 🌏 https://medium.com/@sdbala/net-core-configuration-in-net-8-4a8365f24ff1
+
+Este es su contenido:
+
+````json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}
+````
+
+Antiguamente el archivo `appsettings.json` era un archivo `XML` como este:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <appSettings>
+    <add key="RetryCount" value="5" />
+    <add key="QueueLength" value="100" />
+  </appSettings>
+  <connectionStrings>
+    <add name="MyDatabase" connectionString="Server=myServerAddress;Database=myDataBase;User Id=myUsername;Password=myPassword;" providerName="System.Data.SqlClient" />
+  </connectionStrings>
+</configuration>
+```
+
+Pero su funcionalidad era realmente la misma. De hecho, en esta línea: 
+
+```xml
+  <connectionStrings>
+    <add name="MyDatabase" connectionString="Server=myServerAddress;Database=myDataBase;User Id=myUsername;Password=myPassword;" providerName="System.Data.SqlClient" />
+  </connectionStrings>
+```
+
+Podemos ver un adelanto de lo que vamos a tener que añadir a nuestro ``json``: El nombre correspondiente a la conexión que queremos configurar.
+
+> 🌏 Puedes encontrar más información aquí: https://dotnetfullstackdev.medium.com/appsettings-in-net-core-the-game-changer-for-configurations-a994d842e34c
+
+Por tanto, podemos decir que el fichero ``appsettings.json``:
+
+> _[...] is a JSON-based configuration file used in .NET Core applications to store:_
+> 1. _Connection strings._
+> 2. _API keys._
+> 3. _Application settings._
+> 4. _Environment-specific configurations._
+> 5. _This file supports hierarchical structures, making it easier to organize related settings._
+
+Antes vimos que con esta línea:
+
+```
+string? httpClientName = builder.Configuration["TodoHttpClientName"];
+ArgumentException.ThrowIfNullOrEmpty(httpClientName);
+```
+
+Accedíamos a la configuración definida en el `appsettings.json`. 
+
+> ‼️Recordemos que **aún no la hemos configurado como tal, estamos asumiendo que existe**.
+
+La instrucción ``builder.Configuration`` proviene del paquete de Microsoft: ``using Microsoft.Extensions.Configuration;``.
+
+Vamos a organizar el código un poco mejor para que nos sea más sencillo entender esto.
+
+
+#### Inicializando la configuración de las conexiones
+
+Si nos fijamos en la fuente de ``medium``:
+
+> https://dotnetfullstackdev.medium.com/appsettings-in-net-core-the-game-changer-for-configurations-a994d842e34c
+
+Tiene creada una clase llamada ``Program`` donde inicializa la configuración de la conexión a la API:
+
+````csharp
+using Microsoft.Extensions.Configuration;
+using System;
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        var config = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.json")
+            .Build();
+
+        var appName = config["AppSettings:ApplicationName"];
+        var maxUsers = config["AppSettings:MaxUsers"];
+
+        Console.WriteLine($"Application Name: {appName}");
+        Console.WriteLine($"Max Users: {maxUsers}");
+    }
+}
+````
+
+Vamos a hacer algo parecido. Creemos en la raíz del proyecto un fichero llamado ``Core``; y, dentro de éste, otro llamado `Configuration`.
+
+````csharp
+c-basic-api/
+    └── Core/
+        └── ApiConfiguration.cs
+[...]
+````
+Y dentro de ``ApiConfiguration.cs``, creamos la siguiente clase:
+
+```csharp
+namespace c_basic_api.Core.Configuration;
+using Microsoft.Extensions.Configuration;
+
+public class ApiConfiguration
+{
+    public static void Start(IConfiguration builder) {
+
+
+    }
+}
+```
+
+> ‼️Cuando inicializamos el programa desde ``Program.cs`` y se llega a esta línea:
+> ```var builder = WebApplication.CreateBuilder(args)```
+> El fichero `appsettings.json` y la configuración **ya han sido cargadas**. Por tanto, lo que realmente queremos hacer desde
+> ``ApiConfiguration.cs`` es **acceder a esa configuración y extraer los datos que queremos**.
+
+
 
 
