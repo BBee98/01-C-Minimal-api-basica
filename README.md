@@ -452,7 +452,6 @@ app.MapGet("/", async () =>
 
 Las ventajas que nos ofrece (aparte de eliminar el problema de la reasignación del DNS que describíamos en el punto anterior 👆) son **reutilización**, integración con "pool de peticiones" (más adelante desarrollaremos este punto) y configuración customizada.
 
-
 #### Creación de HttpClientFactory
 
 > 📝 https://medium.com/asp-dotnet/why-use-httpclientfactory-1fa857db78de
@@ -483,10 +482,11 @@ builder.Services.AddHttpClient(
     });
 ```
 
-La configuración de ``HttpClientFactory`` se realiza en el archivo principal de la aplicación: ``Program.cs``. Aunque tiene ``factory`` en el nombre, realmente es
-una nomenclatura utilizada por ``.NET`` por detrás, pero no es que nosotros tengamos que hacer un patrón de factoría (`factory pattern`) por detrás.
+Aunque tiene ``factory`` en el nombre, realmente es una nomenclatura utilizada por ``.NET`` por detrás, pero no es que nosotros tengamos que hacer un patrón de factoría (`factory pattern`) por detrás.
 
-📋Vamos a estudiar por línea qué es este código:
+📋Vamos a estudiar por línea qué es este código.
+
+##### Desglosando el código
 
 > 🌏 https://dev.to/airarrazabald/utilizando-httpclient-con-ihttpclientfactory-en-net-6-2iem
 
@@ -497,6 +497,102 @@ Microsoft define ``HttpClientFactory`` como:
 > [...] Una interfaz que se usa para configurar y crear HttpClient instancias en una aplicación mediante inserción de dependencias (DI). También proporciona extensiones para el middleware basado en Polly a fin de aprovechar los controladores de delegación en HttpClient.
 
 Que esto es lo que ya sabíamos: nos permite crear una instancia de ``HttpClient`` que sea reutiliizable y que no nos bloquee cuando se produzcan cambios en la configuración.
+
+Basándonos en el ejemplo anterior, si atendemos a esta parte del código:
+
+```csharp
+builder.Services.AddHttpClient(
+    httpClientName,
+    client =>
+    {
+        // Set the base address of the named client.
+        client.BaseAddress = new Uri("https://jsonplaceholder.typicode.com/");
+
+        // Add a user-agent default request header.
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("dotnet-docs");
+    });
+```
+
+Vemos que se está utilizando la función ``AddHttpClient`` que, según la documentación oficial de Microsoft:
+
+> _Para registrar IHttpClientFactory, llame a AddHttpClient_
+
+> 🌏https://learn.microsoft.com/es-es/dotnet/core/extensions/httpclient-factory#basic-usage
+
+Es decir, que esa línea **crea por detrás** todo el `HttpClientFactory` que necesitamos, evitándonos a nosotros hacer todo el trabajo.
+
+> ‼️También podemos llamar a la función sin pasarle ningún parámetro:
+> ```builder.Services.AddHttpClient();```
+
+##### Extra: Reorganizar el código
+
+Aunque en los ejemplos extraídos de microsoft se utiliza ``AddHttpClient`` directamente en el archivo de ``Program.cs``, podemos
+separarlo para que no quede todo tan aglomerado.
+
+En este artículo de medium: 🌏 https://medium.com/asp-dotnet/why-use-httpclientfactory-1fa857db78de vemos que podemos crear 
+un fichero aparte con una clase llamada ``ConfigureServices``, así que vamos a hacer lo mismo.
+
+Vamos a crear una carpeta llamada ``Core`` y crear el fichero dentro:
+
+````csharp
+c-basic-api/
+    └── Core/
+        └── ConfigureServices.cs
+````
+
+Y vamos a escribir la siguiente clase:
+
+```csharp
+namespace c_basic_api.Core.Configuration;
+
+public class ConfigureServices
+{
+    public void Add(IServiceCollection services)
+    {
+        services.AddHttpClient();
+    }
+}
+```
+
+Vamos a pararnos un momento a analizar ``AddHttpClient``.
+
+##### Entendiendo ``AddHttpClient``
+
+Como dijimos anteriormente, esta función lo que hace es "activar el sistema de peticiones HTTP", y le pide a .NET que
+cree la factoría de HttpClient para ser usada.
+
+Puede tanto recibir parámetros como no recibirlos, y lo que cambia es que si los recibe **creamos una conexión por defecto**:
+
+```csharp
+string? httpClientName = builder.Configuration["TodoHttpClientName"];
+
+builder.Services.AddHttpClient(
+    httpClientName,
+    client =>
+    {
+        // Set the base address of the named client.
+        client.BaseAddress = new Uri("https://jsonplaceholder.typicode.com/");
+
+        // Add a user-agent default request header.
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("dotnet-docs");
+    });
+```
+
+En el ejemplo superior 👆, pasamos por parámetro:
+a) El **nombre de la conexión** mediante la variable `httpClientName` (que obtenemos de un fichero llamado `appsettings.json` y que desarrollaremos más adelante 🖌️)
+b) El cliente (`client`) que nos permitirá establecer los parámetros de la conexión (como los `headers`).
+
+``AddHttpClient`` nos da un "cliente en blanco". Entonces, esto nos deja dos opciones: pre-configurarlo en el momento en el que le pedimos un cliente a la factoría, o simplemente cogerlo y cada vez que lo usemos, configurar los aspectos necesarios.
+
+Vamos a entender primero qué significa **pre-configurar**. Pre-configurar sería lo mismo que decir:
+_"Para esta conexión `httpClientName` quiero establecer una pre-configuración, que será establecer cuál es la Uri por defecto (`client.BaseAddress = new Uri("https://jsonplaceholder.typicode.com/");`)_.
+
+En esta línea ``client.BaseAddress = new Uri("https://jsonplaceholder.typicode.com/");`` establecemos una Uri por defecto para este cliente, por lo que cada vez que hagamos una conexión con este cliente, accederemos a la misma Uri.
+Si no hiciéramos el paso previo de la pre-configuración, cada vez que iniciáramos una conexión tendríamos que especificar la ``BaseAddress``.
+
+
+
+
 
  En esta línea:
 
@@ -615,11 +711,12 @@ class Program
 }
 ````
 
-Vamos a hacer algo parecido. Creemos en la raíz del proyecto un fichero llamado ``Core``; y, dentro de éste, otro llamado `Configuration`.
+Vamos a hacer algo parecido. Dentro de la carpeta ``Core`` creada anteriormente, vamos a crear un fichero llamado `ApiConfiguration.cs`.
 
 ````csharp
 c-basic-api/
     └── Core/
+        └── ConfigureServices.cs
         └── ApiConfiguration.cs
 [...]
 ````
@@ -644,5 +741,47 @@ public class ApiConfiguration
 > ``ApiConfiguration.cs`` es **acceder a esa configuración y extraer los datos que queremos**.
 
 
+Ahora, vamos a añadir la conexión que queremos hacer a ``appsettings.json``:
+
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "INEApi": {
+    "AvailableOperations": "https://servicios.ine.es/wstempus/js/ES/OPERACIONES_DISPONIBLES"
+  },
+  "AllowedHosts": "*"
+}
+```
+
+> 👉 Lo que hemos añadido es:
+>  ```
+>  "INEApi": {
+>    "AvailableOperations": "https://servicios.ine.es/wstempus/js/ES/OPERACIONES_DISPONIBLES"
+> },```
+> 
+
+Y dentro de la clase ``ApiConfiguration.cs``:
+
+```csharp
+namespace c_basic_api.Core.Configuration;
+using Microsoft.Extensions.Configuration;
+
+public class ApiConfiguration
+{
+    public static void Start(IConfiguration configuration)
+    {
+        string? url = configuration["INEApi:AvailableOperations"];
+        
+    }
+}
+```
+
+> 👉``string? url = configuration["INEApi:AvailableOperations"];``
 
 
+Ahora ya tenemos acceso a la url de la API del INE, pero nos falta hacer la conexión.
