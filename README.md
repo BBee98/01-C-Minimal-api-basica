@@ -590,9 +590,28 @@ _"Para esta conexión `httpClientName` quiero establecer una pre-configuración,
 En esta línea ``client.BaseAddress = new Uri("https://jsonplaceholder.typicode.com/");`` establecemos una Uri por defecto para este cliente, por lo que cada vez que hagamos una conexión con este cliente, accederemos a la misma Uri.
 Si no hiciéramos el paso previo de la pre-configuración, cada vez que iniciáramos una conexión tendríamos que especificar la ``BaseAddress``.
 
+Ahora teniendo en cuenta esto, vamos entonces a desarrollar mejor nuestra clase ``ConfigureServices``:
 
+Vamos a cambiar la clase de ``ConfigureServices.cs`` por ``AvailableOperationsHttpQuery.cs``, y vamos a colocar el fichero dentro de la carpeta ``AvailableOperations``:
 
+> 🚧 Recuerda eliminar ``ConfigureServices.cs`` si hiciste una copia.
 
+Y ahora vamos a crear la llamada:
+
+```csharp
+namespace c_basic_api.INE.AvailableOperations;
+
+public class AvailableOperationsHttpQuery
+{
+    public void Execute(IServiceCollection services)
+    {
+        services.AddHttpClient(client =>
+        {
+            client.BaseAddress = new Uri("https://servicios.ine.es/wstempus/js/ES/OPERACIONES_DISPONIBLES");
+        });
+    }
+}
+```
 
  En esta línea:
 
@@ -766,6 +785,19 @@ Ahora, vamos a añadir la conexión que queremos hacer a ``appsettings.json``:
 > 
 
 Y dentro de la clase ``ApiConfiguration.cs``:
+
+````
+c-basic-api/
+└── INE/
+    └── AvailableOperations/
+        └── AvailableOperationsHttpQuery.cs
+        └── AvailableOperationsQuery.cs
+         └── AvailableOperationsQueryHandler.cs
+````
+
+Ahora vamos a desarrollar la petición:
+
+
 
 ```csharp
 namespace c_basic_api.Core.Configuration;
