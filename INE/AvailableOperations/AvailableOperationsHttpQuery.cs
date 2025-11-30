@@ -1,12 +1,11 @@
 namespace c_basic_api.INE.AvailableOperations;
+using Core.IQuery;
 
-public class AvailableOperationsHttpQuery
+public class AvailableOperationsHttpQuery: IQuery<IActivityOperationModel[]>
+
 {
-    public void Execute(IServiceCollection services)
+    public IActivityOperationModel[] Execute(IHttpClientFactory httpClientFactory)
     {
-        services.AddHttpClient(client =>
-        {
-            client.BaseAddress = new Uri("https://servicios.ine.es/wstempus/js/ES/OPERACIONES_DISPONIBLES");
-        });
+        HttpClient client = httpClientFactory.CreateClient("QueryOperationsAvailable");
     }
 }

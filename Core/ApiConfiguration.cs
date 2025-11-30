@@ -1,4 +1,4 @@
-namespace c_basic_api.Core.Configuration;
+namespace c_basic_api.Core;
 using Microsoft.Extensions.Configuration;
 
 public class ApiConfiguration

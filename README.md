@@ -1,8 +1,8 @@
 # Introducción a C#
 
-## Primeros pasos: Nociones básicas
+## 1. Primeros pasos: Nociones básicas
 
-### La directiva `using`
+### 1.1 La directiva `using`
 
 ````csharp
 using Microsoft.Xna.Framework;
@@ -19,13 +19,13 @@ Por ejemplo, en este caso: `using Microsoft.Xna.Framework.Graphics;` nos permite
 
 Así que sería como "pre-instanciar" la clase que nos permita luego hacer la instacia per sé.
 
-### La directiva `namespace`
+### 1.2 La directiva `namespace`
 
 `namespace c_tgc_game;`
 
 Lo que hace es definir como un "scope" al que van a pertenecer las variables. Es decir, que todas las variables que creemos dentro de este `namespace` van a pertenecer únicamente a éste, y si hay otra variable llamada **exactamente igual** en otro `namespace`, **no** presentarán conflictos entre ellos.
 
-### Modificadores de acceso
+### 1.3 Modificadores de acceso
 
 - Ya sabemos que hay ciertos lenguajes de backend (Java, C#, C++) que son deominados como `lenguajes de programación orientado a ibjetos (POO)`. En este tipo de lenguajes, existe algo llamado `modificadores de acceso` (`public`, `private` y `protected`), que determina el **grado de accesibilidad** de una variable:
 
@@ -35,7 +35,7 @@ Lo que hace es definir como un "scope" al que van a pertenecer las variables. Es
 - Si es `protected`, **protegida**, es accesible desde cualquier parte del código, **excepto** desde el mismo fichero.
 
 
-## 1. Creando una API REST con .NET
+## 2. Cómo se crea una API REST con .NET
 
 Para empezar, la herramienta utilizada para desarrollar aplicaciones web, en el caso de C#, es **ASP.NET**. 
 
@@ -95,12 +95,11 @@ Es decir, que la instrucción ``var builder = WebApplication.CreateBuilder(args)
 
 Pero a mí me surge una pregunta: ¿Qué estructura se supone que debo utilizar en una API realizada en C#?
 
-## 2. Arquitectura de una API mínima en .NET
+### 2.1 Arquitectura de una API mínima en .NET
 
 > 🌏 Fuente: https://treblle.com/blog/how-to-structure-your-minimal-api-in-net
 
-
-Para empezar, ¿qué es una *API mínima*?
+**¿Qué es una *API mínima*?**
 
 > Minimal API is a streamlined approach to building REST APIs in .NET, focusing on brevity
 > in code, minimal configuration, and a significant reduction in the usual formalities associated with traditional methods.
@@ -113,7 +112,7 @@ Aunque en la página nos desarrollan un poco más las diferencias, vamos a fijar
 > slice architecture, which centers around building applications around specific features, 
 > often involving just one endpoint. This focus on feature logic aligns seamlessly with Minimal API's principles.
 
-### ¿Qué es *Vertical slice architecture*?
+### 2.2 ¿Qué es *Vertical slice architecture*?
 
 > 🌏 https://www.jimmybogard.com/vertical-slice-architecture/
 
@@ -135,7 +134,7 @@ Es decir, *cada feature, con sus TODOs, casos de uso, endpoints, etc se agrupan 
 
 El objetivo es *aislar el acoplamiento entre las distintas features*, *tener una mejor escalabilidad donde al modificar un caso de uso afecte a una menor proporción de capas*, y *ayudar al mantenimiento y aislamiento de las mismas*.
 
-#### Vertical Slice Architecture vs Featured Architecture
+#### 2.2.1 Vertical Slice Architecture vs Featured Architecture
 
 Una de las dudas que pueden surgir, es que la *Vertical Slice Architecture* (VSA) se *parece bastante* a la *Featured Architecture*, pues ambas tienen una organización *muy parecida*. Las dos se estructuran *a partir de features*, lo cual puede inducir a confusión. Sin embargo, en lo que se diferencian  es en el *planteamiento de la misma*:
 
@@ -146,7 +145,92 @@ Cada capa (layer) encapsula todo lo necesario para ese caso: endpoint, handler/c
 
 > 📝 En la fuente de _medium_ mencionada anteriormente, en el apartado de _Folder Structure_, puedes ver un ejemplo tangible de VSA
 
-## 3. Creando nuestra primera ruta.
+### 3. Definición de la API
+
+#### 3.1 El modelo de datos
+
+Si ponemos en el navegador: ``https://servicios.ine.es/wstempus/js/ES/OPERACIONES_DISPONIBLES`` veremos que nos sale una lista de operaciones disponibles.
+Vamos a basarnos en uno de los objetos que se nos devuelve dentro de esta lista:
+
+````json
+ {
+    "Id": 4,
+    "Cod_IOE": "30147",
+    "Nombre": "Estadística de Efectos de Comercio Impagados",
+    "Codigo": "EI"
+  }
+````
+
+Para definir el modelo de `IActivityOperationModel`:
+
+````csharp
+public interface IActivityOperationModel
+{
+    public string Id { get; }
+    public string Cod_IOE { get; }
+    public string Name { get; }
+    public string Code { get; }
+}
+````
+
+🦄Vamos a hablar sobre **dos detalles** importantes de las interfaces:
+
+1. 📋 La nomenclatura
+
+Si nos fijamos en la documentación hallada en la mayoría de los sitios (dejo a continuación dos ejemplos):
+
+> 🌏https://education.launchcode.org/csharp-web-dev-curriculum/interfaces-and-polymorphism/reading/interfaces/index.html
+> 🌏https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/interfaces
+
+Veremos que **el nombre de la interfaz va precedido de la letra ``I``**. Esto es para poder **identificarla rápidamente como interfaz**.
+En el ``typescript`` no es una práctica común, pero en backend (en este caso, en C#) sí es algo más usual. Sin embargo, es cierto que en otros lenguajes, como
+``Go``, tampoco es común usar la letra ``I`` para identificar una interfaz (https://go.dev/tour/methods/9).
+
+2. Funciones de acceso (``{get; set; }``)
+
+En los lenguajes de backend (al menos, en Java, que es lo que estudié en su momento), cuando declaras una clase que actúa como el modelo (o representación) de un objeto,
+las propiedades del objeto se declaran como ``private`` y utilizas lo que se llaman **funciones de acceso** para **acceder** (valga la redundancia) a las mismas. Por ejemplo:
+
+````
+public interface Vehiculo {
+    private String matricula = "";
+    
+    public String getMatricula() {
+        return matricula;
+    }
+    public void setMatricula(String matricula) {
+        this.matricula = matricula;
+    }
+}
+````
+
+En este ejemplo, basado en el lenguaje de ``java``, tenemos una propiedad de clase llamada ``matrícula``, que es de tipo ``string``. Esa propiedad es **privada**, pero podemos
+"acceder a ella" gracias a dos funciones de acceso: ``getMatricula()`` y ``setMatricula()``, lo que se llaman ``setter`` y ``getter``.
+
+🤔 ¿Por qué no hacemos que la propiedad matrícula sea pública? Porque eso violaría el ``principio de encapsulamiento``, una de las bases de la programación
+orientada a objetos (POO) (https://www.reddit.com/r/csharp/comments/ye4kmz/why_exactly_is_it_bad_to_have_public_fields/).
+
+> 📝 _Regla de encapsulamiento_: https://medium.com/@AIbatros/c-encapsulation-6b59be896312
+
+Privatizar la propiedad nos da un **mayor control** sobre **qué acciones queremos regular sobre ella**. Si fuera pública, cualquiera podría obtener/sobreescribir la información; sin embargo, si
+la privatizamos, podremos definir mediante las funciones de acceso u otras **qué operaciones permitimos hacer sobre las propiedades**.
+
+Por tanto, si en nuestra interfaz de C# escribimos:
+
+````csharp
+public interface IActivityOperationModel
+{
+    public string Id { get; }
+}
+````
+
+Significa que **solo permitimos obtener la propiedad**, no permitimos modificarla. Y en este caso solo permitimos obtenerla porque `ActivityOperationModel` solo pretende ser
+una **representación en código** del objeto que nos llega desde la petición realizada al INE. En caso de que quisiéramos poder modificar alguna propiedad del objeto, sería más adecuado
+crear **otro modelo** que represente **el objeto que almacenamos nosotros, como servidor, en la base de datos** (o donde sea). Mantener separados
+los objetos según representen a uno **llegado desde una petición externa** a uno que se encuentra **almacenado en , lo que diríamos, **nuestro dominio conocido**, evita problemas futuros. Estos aspectos se desarrollarán mejor cuando hablemos de los **DTO**, pero de momento
+simplemente entendamos que, al ser un objeto **ajeno** a nuestro entorno, no debemos modificarlo.
+
+### 3.2 Creando nuestra primera ruta.
 
 Vamos a crear la primera ruta donde devolveremos unos datos obtenidos del **INE** (Instituto Nacional de Estadística). 
 
@@ -154,9 +238,13 @@ Lo primero de todo es crear el fichero donde escribiremos el código. Teniendo e
 
 > 🖌️ Es un nombre provisional, susceptible a cambio.
 
-Bien, ahora que sabemos que lo que queremos es crear una ruta `GET` (porque queremos devolver unos datos cuando desde el lado cliente se nos haga una petición), vamos a hacerlo siguiendo el patrón **CQRS**.
+Bien, ahora que sabemos que lo que queremos es crear una ruta `GET` 
+(porque queremos devolver unos datos cuando desde el lado cliente se nos haga una petición), 
+vamos a hacerlo siguiendo el patrón **CQRS**.
 
-### ¿Qué es CQRS?
+#### 3.2.1  Integrando CQRS
+
+##### 3.2.1.1 ¿Qué es CQRS?
 
 > 🌏 https://martinfowler.com/bliki/CQRS.html
 
@@ -170,7 +258,6 @@ Por ejemplo: una petición `GET` **siempre** será **query**, porque es una mera
 
 > ‼️ Es mi primera vez aplicándolo en un lenguaje de backend, con unas reglas léxicas bastante distintas al front, así que no te preocupes si cometes errores 📚.
 
-#### Integrando CQRS
 
 Si buscamos información sobre cómo implementar CQRS en .NET, encontraremos una librería llamada `MediatR`:
 
@@ -260,127 +347,288 @@ Esto sería el **vistazo general** del patrón **CQRS**. Más adelante profundiz
 
 > 👉 También puedes leer más sobre CQRS aquí: https://ironpdf.com/blog/net-help/cqrs-pattern-csharp/
 
-
-## TODO Instalación Swagger
-
-> 🌏 https://learn.microsoft.com/es-es/aspnet/core/tutorials/min-web-api?view=aspnetcore-9.0&tabs=visual-studio-code#install-swagger-tooling
-
-### 3.1 Creación de la estructura
-
-#### El modelo de datos
+#### 3.2.2 Elaborando la petición query
 
 > 🌏 https://www.milanjovanovic.tech/blog/vertical-slice-architecture
 
 Vamos a crear los archivos necesarios para hacer una petición a la base de datos del INE para poder recibir las operaciones disponibles sobre las que suelo buscar información. Teniendo en cuanta lo desarrollado anteriormente (**VSA** y **CQRS**) deberíamos generar una estructura de archivos muy parecida a esto:
-
+En la raíz del proyecto creemos una carpeta llamada `INE`:
 ````
 c-basic-api/
-└── Entities/
-    └── ActivityOperationModel.cs/
 └── INE/
     └── AvailableOperations/
-        └── AvailableOperationsQuery.cs
-         └── AvailableOperationsQueryHandler.cs
+         └── AvailableOperationsHttpQuery.cs
 ````
 
-- **Entities**: donde vamos a guardar las entidades que vamos a utilizar en el proyecto.
-- **ActivityOperationModel**: La definición del objeto protagonista de la feature.
-- **INE**: como nombre de la Feature donde vamos a englobar las cosas.
-- **AvailableOperations**: Como otra feature. Hay una tabla en el INE que se llama OPERACIONES_DISPONIBLES, así que trataremos las tablas como `features` dentro de nuestro proyecto.
-- **AvailableOperationsQuery**: Será **la interfaz** que defina el/los método/s del handler 👇🏻.
-- **AvailableOperationsQueryHandler**: El handler que realizará la llamada http para obtener los datos del INE y que implementará la interfaz. 
+- **INE**: (Directorio) como nombre de la Feature donde vamos a englobar las cosas.
+- **AvailableOperations**: (Directorio) Como otra feature. Hay una tabla en el INE que se llama OPERACIONES_DISPONIBLES, así que trataremos las tablas como `features` dentro de nuestro proyecto.
+- **AvailableOperationsHttpQuery**: Será la **clase** que realize la petición al INE y que reciba los datos.
 
-> ‼️No hace falta utilizar las palabras ``Get`, `Post`, `Put` o semejantes, porque esa información **ya nos la proporciona el uso de query o command** como nombres.
+##### 3.2.2.1 Primera parte del ``CQRS``: interfaz IQuery
 
-Si ponemos en el navegador: ``https://servicios.ine.es/wstempus/js/ES/OPERACIONES_DISPONIBLES`` veremos que nos sale una lista de operaciones disponibles.
-Vamos a basarnos en uno de los objetos que se nos devuelve dentro de esta lista:
+Esta interfaz nos va a permitir definir una metodología de trabajo común para todas las futuras queries que vayamos a definir.
 
-````json
- {
-    "Id": 4,
-    "Cod_IOE": "30147",
-    "Nombre": "Estadística de Efectos de Comercio Impagados",
-    "Codigo": "EI"
-  }
-````
+> 👉Recordemos que:
+> 1️⃣ En el patrón ``CQRS``, la `Q` significa `query`, y es el término que debemos utilizar cuando hacemos una **petición de datos** sin modificar nada.
+> 2️⃣ En C# es común iniciar el nombre de la interfaz con la letra ``I`` para identificarla como tal.
 
-Para definir el modelo de `ActivityOperation`:
+Vamos a crear una carpeta llamada ``Core`` al nivel de la raíz del proyecto y, dentro de ella, la interfaz `IQuery`:
 
 ````csharp
-public interface IActivityOperationModel
-{
-    public string Id { get; }
-    public string Cod_IOE { get; }
-    public string Name { get; }
-    public string Code { get; }
-}
+c-basic-api/
+    └── Core/
+        └── IQuery.cs
 ````
 
-🦄Vamos a hablar sobre **dos detalles** importantes de las interfaces:
-
-1. 📋 La nomenclatura 
-
-Si nos fijamos en la documentación hallada en la mayoría de los sitios (dejo a continuación dos ejemplos):
-
-> 🌏https://education.launchcode.org/csharp-web-dev-curriculum/interfaces-and-polymorphism/reading/interfaces/index.html
-> 🌏https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/interfaces
-
-Veremos que **el nombre de la interfaz va precedido de la letra ``I``**. Esto es para poder **identificarla rápidamente como interfaz**.
-En el ``typescript`` no es una práctica común, pero en backend (en este caso, en C#) sí es algo más usual. Sin embargo, es cierto que en otros lenguajes, como
-``Go``, tampoco es común usar la letra ``I`` para identificar una interfaz (https://go.dev/tour/methods/9).
-
-2. Funciones de acceso (``{get; set; }``
-
-En los lenguajes de backend (al menos, en Java, que es lo que estudié en su momento), cuando declaras una clase que actúa como el modelo (o representación) de un objeto,
-las propiedades del objeto se declaran como ``private`` y utilizas lo que se llaman **funciones de acceso** para **acceder** (valga la redundancia) a las mismas. Por ejemplo:
-
-````
-public interface Vehiculo {
-    private String matricula = "";
-    
-    public String getMatricula() {
-        return matricula;
-    }
-    public void setMatricula(String matricula) {
-        this.matricula = matricula;
-    }
-}
-````
-
-En este ejemplo, basado en el lenguaje de ``java``, tenemos una propiedad de clase llamada ``matrícula``, que es de tipo ``string``. Esa propiedad es **privada**, pero podemos
-"acceder a ella" gracias a dos funciones de acceso: ``getMatricula()`` y ``setMatricula()``, lo que se llaman ``setter`` y ``getter``. 
-
-🤔 ¿Por qué no hacemos que la propiedad matrícula sea pública? Porque eso violaría el ``principio de encapsulamiento``, una de las bases de la programación
-orientada a objetos (POO) (https://www.reddit.com/r/csharp/comments/ye4kmz/why_exactly_is_it_bad_to_have_public_fields/).
-
-> 📝 _Regla de encapsulamiento_: https://medium.com/@AIbatros/c-encapsulation-6b59be896312
-
-Privatizar la propiedad nos da un **mayor control** sobre **qué acciones queremos regular sobre ella**. Si fuera pública, cualquiera podría obtener/sobreescribir la información; sin embargo, si
-la privatizamos, podremos definir mediante las funciones de acceso u otras **qué operaciones permitimos hacer sobre las propiedades**.
-
-Por tanto, si en nuestra interfaz de C# escribimos:
+Definamos la interfaz 👇
 
 ````csharp
-public interface IActivityOperationModel
+namespace c_basic_api.Core.IQuery;
+
+public interface IQuery<T>
 {
-    public string Id { get; }
+    public T Execute(IHttpClientFactory httpClientFactory);
 }
 ````
 
-Significa que **solo permitimos obtener la propiedad**, no permitimos modificarla. Y en este caso solo permitimos obtenerla porque `ActivityOperationModel` solo pretende ser
-una **representación en código** del objeto que nos llega desde la petición realizada al INE. En caso de que quisiéramos poder modificar alguna propiedad del objeto, sería más adecuado
-crear **otro modelo** que represente **el objeto que almacenamos nosotros, como servidor, en la base de datos** (o donde sea). Mantener separados
-los objetos según representen a uno **llegado desde una petición externa** a uno que se encuentra **almacenado en , lo que diríamos, **nuestro dominio conocido**, evita problemas futuros. Estos aspectos se desarrollarán mejor cuando hablemos de los **DTO**, pero de momento
-simplemente entendamos que, al ser un objeto **ajeno** a nuestro entorno, no debemos modificarlo.
+El método ``Execute`` deberá recibir por parámetro un objeto de tipo `IServiceCollection` (que es una interfaz que nos permitirá crear conexiones para realizar peticiones http y que veremos más adelante).
+Además, hemos declarado un ``tipo genérico`` en la interfaz para poder hacerla más dinámica. 
+Ese tipo genérico nos permite tener la flexibilidad de que, cuando la implementemos, definamos en ese momento
+qué es lo que la Query va a devolver (porque podría ser un único elemento, varios, un objeto concreto...). 
 
-#### La interfaz de consulta
+De esta manera, definimos lo que es la **metodología de trabajo**, pero nos permitimos ser lo suficientemente flexibles para que sea reusable a interés.
 
-Al igual que hemos hecho una interfaz definiendo el modelo de datos que vamos a recibir por parte del INE, toca definir la interfaz de la query que vamos a usar para obtenerlos.
+¿Y quién va a implementar esta interfaz? La clase que desarrolle esa llamada: ``AvailableOperationsHttpQuery.cs``
 
-> 👉Recordemos que, en el patrón ``CQRS``, la `Q` significa `query`, y es el término que debemos utilizar cuando hacemos una **petición de datos** sin modificar nada.
+#### 3.2.2.2 Segunda parte del ``CQRS``: creación de la clase ``AvailableOperationsHttpQuery.cs``
+
+Ahora que ya hemos creado la definición del método (es decir, qué método va a tener que ejecutar la clase que creemos que desarrolle toda
+la petición), vamos a crear al ejecutor en sí mismo:
+
+```csharp
+namespace c_basic_api.INE.AvailableOperations;
+using Core.IQuery;
+
+public class AvailableOperationsHttpQuery: IQuery<IActivityOperationModel[]>
+
+{
+    public IActivityOperationModel[] Execute(IHttpClientFactory httpClientFactory)
+    {
+        HttpClient client = httpClientFactory.CreateClient("QueryOperationsAvailable");
+    }
+}
+```
+
+Gracias al parámetro de tipo ```IHttpClientFactory``` podemos utilizar un método llamado ``CreateClient``.
+
+> 📝 https://medium.com/asp-dotnet/why-use-httpclientfactory-1fa857db78de
+
+🧑‍💻 Vamos a aclarar un poco esta función porque su nombre puede resultar un poco confuso. ```CreateClient``` lo que hace es otorgarnos una configuración que **ya hemos creado
+anteriormente mediante otro servicio que aún no hemos visto (``IServiceCollection``). 
+
+Este ``CreateClient`` nos permite acceder al resultado obtenido por la petición http, pero más adelante terminaremos de desarrollar este punto. De momento
+dejémoslo aquí y hagamos un interludio para ver cómo definimos estas conexiones mediante ``IServiceCollection``.
+
+##### IServiceCollection: ```ConfigureServices```
+
+> 🌏https://medium.com/@MatinGhanbari/mastering-dependency-injection-with-iservicecollection-in-net-core-6b46f62a584c
+
+Un estándar dentro de ``C#`` es crear una clase aparte llamada ``ConfigureServices.cs`` donde se inicialice los servicios necesarios durante el tiempo de configuración de la aplicación.
+
+Algo como esto 👇
+
+```csharp
+public void ConfigureServices(IServiceCollection services)
+{
+    services.AddTransient<ITransientService, TransientService>();
+    services.AddScoped<IScopedService, ScopedService>();
+    services.AddSingleton<ISingletonService, SingletonService>();
+}
+```
+
+Es las aplicaciones pequeñas, este proceso puede hacerse dentro del propio fichero ``Program.cs`` (o bien en un fichero aparte llamado ``ConfigureServices.cs``),
+pero por mantener una cohesión con el resto de la organización, vamos a hacerlo como sería en una aplicación más grande.
+
+##### Métodos de extensión (``Extension methods``)
+
+> 📚https://www.thomasclaudiushuber.com/2025/08/01/c-14-0-extension-members/
+> 📚 https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/extension-methods
+> 📚 https://medium.com/@lfilipecosta3/c-extension-methods-with-practical-use-cases-530948a8f8d9#e6be
+
+Vamos a utilizar los ejemplos de la documentación anterior para explicar esto.
+
+Imagina que tenemos la clase ``Developer`` que proviene de una librería externa, o de un código ajeno; es decir, de un código al que no tenemos acceso:
+
+````csharp
+public class Developer
+{
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+}
+````
+
+Y queremos obtener el nombre completo de esta clase. Como no tenemos la posibilidad de modificar esta misma clase, podemos hacer lo que se conoce como
+``Extension methods``:
+
+````csharp
+public static class DeveloperExtensions
+{
+    public static string GetFullName(this Developer dev)
+    {
+        return $"{dev.FirstName} {dev.LastName}";
+    }
+}
+````
+
+Y entonces podemos utilizar el método ``GetFullName`` como si fuera un **método estático** ya existente de la clase original ``Developer``:
+
+````csharp
+var dev = new Developer
+{
+    FirstName = "Thomas",
+    LastName = "Huber"
+};
+
+// Call the GetFullName method like a normal static method
+var fullName = DeveloperExtensions.GetFullName(dev);
+````
+
+Crear `Extension methods` tiene ciertas ventajas:
+
+1. Son, realmente, "trucos visuales". No crean tipos nuevos ni modifican el original, sino que simplemente agregan funcionalidad a un tipo existente.
+2. Preservan **el principio del desacoplamiento** (explicado en el punto 1).
+
+Para que un método de extensión funcione correctamente es necesario que se cumplan los siguientes requisitos:
+
+> _To use an extension method like the GetFullName extension method, the class containing the extension method – in our case the DeveloperExtensions class – must be known in the file where you want to use the extension method._
+
+En los ejemplos anteriores no agregamos ningún ``namespace``, por lo que, según este requerimiento, el código **no funcionaría**. Vamos a añadir los ``namespaces`` para completarlo y entender bien esta regla:
+
+````csharp
+namespace c_basic_api.Core.Developer
+
+public class Developer
+{
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+}
+
+namespace c_basic_api.Core.DeveloperExtensions
+using c_basic_api.Core.Developer;
+
+public static class DeveloperExtensions
+{
+    public static string GetFullName(this Developer dev)
+    {
+        return $"{dev.FirstName} {dev.LastName}";
+    }
+}
+````
+
+Y ahora deberíamos utilizar los dos ``namespaces`` creados (`Developer` y `DeveloperExtensions`) en el fichero donde vayamos a hacer uso
+del método de extensión. Vamos a suponer que lo queremos utilizar dentro de ``Program.cs``:
+
+````csharp
+using TCH.Models;
+using TCH.Extensions; // Without this, the GetFullName extension method is not available
+
+var dev = new Developer
+{
+    FirstName = "Thomas",
+    LastName = "Huber"
+};
+
+var fullName = dev.GetFullName();
+````
+
+Además de utilizar correctamente los ``namespaces``, si nos fijamos en ``DeveloperExtensions``:
+
+```csharp
+namespace c_basic_api.Core.DeveloperExtensions
+using c_basic_api.Core.Developer;
+
+public static class DeveloperExtensions
+{
+    public static string GetFullName(this Developer dev)
+    {
+        return $"{dev.FirstName} {dev.LastName}";
+    }
+}
+```
+
+En la función ``GetFullName`` estamos pasando una referencia de la clase ``Developer``, precediéndola con `this`:
+
+> ``public static string GetFullName(this Developer dev)``
+
+Esto es **obligatorio** para que la clase sea _realmente_ considerada como un método de extensión. Digamos que es "el ancla" 
+que lo permite. Recordemos que las clases que actúan como métodos de extensión tienen funciones que están "flotando en el aire" (porque estos métodos de extensión
+**no** se usan para crear nuevas instancias ni pretenden crear nuevos tipos), y necesitan del ancla ⚓️ para poder estar **conectados** a una clase que les permita existir.
+
+##### Aplicando lo aprendido
+
+> 🌏https://medium.com/@parsapanahpoor/understanding-iservicecollection-and-iserviceprovider-in-asp-net-f798c4adef70
+
+Ahora que ya sabemos lo que son los **métodos de extension**, vamos a aplicarlo a ``IServiceCollection``.
+
+Como dijimos en en el punto anterior (donde desarrollábamos el IServiceCollection), una práctica común es crear el fichero ``ConfigureServices.cs``,
+así que empecemos por ahí.
+
+A nivel de la carpeta ``AvailableOperations`` creemos el fichero:
+
+````csharp
+c-basic-api/
+    └── INE/
+        └── AvailableOperations/
+            └── ActivityOperationServices.cs
+            └── AvailableOperationsHttpQuery.cs
+````
+
+Y ahora vamos a añadir e siguiente código:
+
+```csharp
+namespace c_basic_api.INE.AvailableOperations;
+
+public static class ActivityOperationServices
+{
+    public static void RegisterActivityOperations(this IServiceCollection serviceCollection)
+    {
+        serviceCollection.AddHttpClient("QueryOperationsAvailable", client => 
+            client.BaseAddress = new Uri(""));
+    }
+}
+```
+
+> ‼️¡Ojo!
+>
+> Anteriormente hablamos de la clase ``ConfigurationService.cs``. 
+> Ya no es necesaria porque, gracias a lo que sabemos de
+> los métodos de extensión, podemos crear un servicio por cada tipo de cliente que necesitemos agregar.
+> Recuerda que el objeto ``IServiceCollection`` lo obtenemos en el fichero `Program.cs`, justo en esta instrucción:
+> ```csharp
+> var services = builder.Services;
+> ```
+
+Ahora podemos hacer esto:
+
+````csharp
+services.RegisterActivityOperations();
+````
+
+Y ya tenemos registrado nuestro cliente.
+
+
+#### 3.2.2.3 Tercera parte del ``CQRS``: la inyección de dependencias
 
 > Tipos primitivos en C#: https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/reference-types
 > Los arrays: https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/arrays
+
+
+#### Preparando la inyección de dependencias (``dependency injection``, abreviado como `DI`) 
+
+> 🌏 https://medium.com/@bromanv/dependency-injection-c-f73bc303b221
+
+Al igual que hemos hecho una interfaz definiendo el modelo de datos que vamos a recibir por parte del INE, 
+toca definir la interfaz de la query que vamos a usar para obtenerlos.
 
 Por tanto, quedaría así:
 
@@ -394,6 +642,7 @@ public interface IAvailableOperationsQueryHandler
 > 📝 Notas importantes 
 > 1. Usar `I` como letra precedente a las interfaces.
 > 2. Definir la propiedad de acceso como ``public`` y utilizar ``Handle`` como nombre de la función asociada al handler.
+
 
 #### El handler
 
@@ -605,13 +854,23 @@ public class AvailableOperationsHttpQuery
 {
     public void Execute(IServiceCollection services)
     {
-        services.AddHttpClient(client =>
+        services.AddHttpClient("QueryOperationsAvailable",client =>
         {
             client.BaseAddress = new Uri("https://servicios.ine.es/wstempus/js/ES/OPERACIONES_DISPONIBLES");
         });
     }
 }
 ```
+
+> Antes de continuar, vamos a esclarecer una posible duda: ``AddHttpClient`` y ``builder.Configuration``, aunque tras bambalinas hacen lo mismo
+> (crear/obtener conexiones), se usan para objetivos diferentes.
+> 1️⃣ ``builder.Configuration``, por un lado, se utiliza para crear las **peticiones** de la API que queramos construir (las peticiones GET, POST, PUT...).
+> Por ejemplo: Cuando creemos una ruta como ``/api/available_operations``, la almacenaremos en el `appsettings.json` y obtendremos a configuración con ``builder.Configuration``.
+> 
+> 1️⃣ ``AddHttpClient``, por otro, se utiliza para crear **conexiones** (o **llamadas**) a servicios externos (como otras APIs, bases de datos... cualquier servicio que no se encuentre **dentro** del dominio de nuestra aplicación).
+> Por ejemplo: En este tutorial, para obtener la información del INE, la llamada que hagamos a su API la configuraremos en este punto.
+
+
 
  En esta línea:
 
