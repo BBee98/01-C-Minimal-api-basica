@@ -1,5 +1,5 @@
 namespace c_basic_api.INE.AvailableOperations;
-using Core.IQuery;
+using Core;
 
 public class AvailableOperationsHttpQuery: IQuery<IActivityOperationModel[]>
 
