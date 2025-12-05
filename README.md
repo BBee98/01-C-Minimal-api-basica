@@ -687,10 +687,8 @@ En la función ``GetFullName`` estamos pasando una referencia de la clase ``Deve
 > ``public static string GetFullName(this Developer dev)``
 
 Esto es **obligatorio** para que la clase sea _realmente_ considerada como un método de extensión. Digamos que es "el
-ancla"
-que lo permite. Recordemos que las clases que actúan como métodos de extensión tienen funciones que están "flotando en
-el aire" (porque estos métodos de extensión
-**no** se usan para crear nuevas instancias ni pretenden crear nuevos tipos), y necesitan del ancla ⚓️ para poder estar
+ancla" que lo permite. Recordemos que las clases que actúan como métodos de extensión tienen funciones que están "flotando en
+el aire" (porque estos métodos de extensión **no** se usan para crear nuevas instancias ni pretenden crear nuevos tipos), y necesitan del ancla ⚓️ para poder estar
 **conectados** a una clase que les permita existir.
 
 ##### Aplicando lo aprendido
@@ -698,10 +696,6 @@ el aire" (porque estos métodos de extensión
 > 🌏https://medium.com/@parsapanahpoor/understanding-iservicecollection-and-iserviceprovider-in-asp-net-f798c4adef70
 
 Ahora que ya sabemos lo que son los **métodos de extension**, vamos a aplicarlo a ``IServiceCollection``.
-
-Como dijimos en en el punto anterior (donde desarrollábamos el IServiceCollection), una práctica común es crear el
-fichero ``ConfigureServices.cs``,
-así que empecemos por ahí.
 
 A nivel de la carpeta ``AvailableOperations`` creemos el fichero:
 
@@ -713,7 +707,7 @@ c-basic-api/
             └── AvailableOperationsHttpQuery.cs
 ````
 
-Y ahora vamos a añadir e siguiente código:
+Y ahora vamos a añadir el siguiente código:
 
 ```csharp
 namespace c_basic_api.INE.AvailableOperations;
@@ -728,37 +722,34 @@ public static class ActivityOperationServices
 }
 ```
 
-‼️ Anteriormente dejamos aparcada la profundización en `AddHttpClient`. Ahora, es el momento de ahondar en ella.
-
 ##### Entendiendo ``AddHttpClient``
 
-👆 Como dijimos anteriormente, esta función lo que hace es **activar el sistema de peticiones HTTP**, y le pide a ``.NET`` que
-cree la factoría de HttpClient para ser usada.
+Esta función lo que hace es "activar el sistema de peticiones HTTP":
 
-Puede tanto recibir parámetros como no recibirlos, y lo que cambia es que si los recibe **creamos una conexión por
-defecto**:
+> _Cuando llama a cualquiera de los métodos de extensión AddHttpClient, está agregando IHttpClientFactory y los servicios y relacionados a IServiceCollection._
+
+Es decir, usamos un objeto ``IServiceCollection`` para poder crear otro de tipo `IHttpClientFactory` con el cual establecer la conexión `http` deseada.
+
+Por tanto, ``AddHttpClient`` nos da lo que se llama un "cliente en blanco", y éste nos permite hacer una _preconfiguración_ **en ese mismo momento** (como hemos hecho durante el
+desarrollo de nuestra aplicación 👆) o, simplemente, cogerlo sin hacer nada de esto. El lado malo de esto es que, cada vez que lo usemos, deberemos configurar los aspectos necesarios.
+
+⚙️ Pre-configurar sería lo mismo que decir, por ejemplo: "Para esta conexión `QueryOperationsAvailable` (el nombre del cliente) quiero establecer cuál es la Uri por
+defecto (`client.BaseAddress = new Uri(");`)."
+
+> 🧑‍💻 Hay otras más opciones de preconfiguración, pero de momento no vamos a tratarlas.
 
 > 🦄 De hecho, en el desarrollo de nuestra aplicación, por ejemplo, le pasamos 2 parámetros.
 
-Los parámetros que puede recibir son:
+Los parámetros que puede recibir ``AddHttpClient`` son:
 
-a) El **nombre de la conexión** mediante la variable `httpClientName`. En el caso anterior: `QueryOperationsAvailable`.
+a) El **nombre de la conexión** mediante la variable `httpClientName`. En nuestro caso sería: `QueryOperationsAvailable`.
 b) El cliente (`client`) que nos permitirá establecer los parámetros de la conexión (como los `headers`). Por ejemplo, en el
 desarrollo de la aplicación, lo hemos utilizado para establecer la Uri de este cliente: ``client.BaseAddress = new Uri("")``
 
-**¿Cómo funciona ``AddHttpClient``?**
-
-``AddHttpClient`` nos da un "cliente en blanco", lo cual nos permite hacer una _preconfiguración_ en ese momento (como en el caso de arriba , o
-) o, simplemente, cogerlo y, cada vez que lo usemos, configurar los aspectos necesarios.
-
-⚙️ Pre-configurar sería lo mismo que decir: "Para esta conexión `QueryOperationsAvailable` (el nombre del cliente) quiero establecer cuál es la Uri por
-defecto (`client.BaseAddress = new Uri(");`)."
-
 > 📚 Microsoft en su guía oficial utiliza la uri de jsonplaceholder: `client.BaseAddress = new Uri("https://jsonplaceholder.typicode.com/");`
 
-Ahora, cada vez que utilicemos el cliente con nombre ``QueryOperationsAvailable``, la uri asociada sería la predefinida en la preconfiguración.
-
-Ahora teniendo en cuenta esto, vamos a añadir a la preconfiguración del cliente la uri a la que queremos apuntar:
+Por tanto, cada vez que utilicemos el cliente con nombre ``QueryOperationsAvailable``, la uri asociada sería la predefinida en la preconfiguración. Como
+no lo hicimos antes, ahora que hemos explicado un poco más en profundidad ``AddHttpClient``, vamos a añadir a la preconfiguración del cliente la uri a la que queremos apuntar:
 
 ```csharp
 using c_basic_api.Core;
@@ -849,94 +840,44 @@ public static class ActivityOperationServices
 }
 ```
 
-Vamos a crear una carpeta llamada ``Core`` y crear el fichero dentro:
+Ahora que ya hemos hecho la **conexión** entre nuestra interfaz ``IQuery`` y la clase `AvailableOperationsHttpQuery`, podemos utilizar la `DI`.
 
-````csharp
-c-basic-api/
-    └── Core/
-        └── ConfigureServices.cs
-````
-
-Y vamos a escribir la siguiente clase:
+En el fichero ``Program.cs`` tenemos la siguiente llamada que se nos hizo por defecto al iniciar el proyecto:
 
 ```csharp
-namespace c_basic_api.Core.Configuration;
+app.MapGet("/",) => "Hello World");
+```
 
-public class ConfigureServices
+Podemos modificarla para recibir por parámetro la ``DI``:
+
+```csharp
+app.MapGet("/", (IQuery<IActivityOperationModel[]> availableOperationsQuery, IHttpClientFactory factory) =>
 {
-    public void Add(IServiceCollection services)
-    {
-        services.AddHttpClient();
-    }
-}
+    availableOperationsQuery.Execute(factory);
+});
 ```
 
-Vamos a pararnos un momento a analizar ``AddHttpClient``.
+> 🦄 El código es posible mejorarlo, pero de momento no lo haremos.
 
-##### Entendiendo ``AddHttpClient``
+Y, ¿por qué la función ``MapGet`` tiene en su poder el parámetro `IHttpClientFactory factory`?
+Bueno, esto es gracias al principio de ``Inversion of control (IoC)``.
 
-Como dijimos anteriormente, esta función lo que hace es "activar el sistema de peticiones HTTP", y le pide a .NET que
-cree la factoría de HttpClient para ser usada.
+##### Inversión de control (IoC)
 
-Puede tanto recibir parámetros como no recibirlos, y lo que cambia es que si los recibe **creamos una conexión por
-defecto**:
+> 🌏 https://medium.com/@anderson.buenogod/dependency-injection-inversion-of-control-in-c-net-8-2caef0086332
+> 🌏 https://learn.microsoft.com/es-es/dotnet/communitytoolkit/mvvm/ioc
 
-```csharp
-string? httpClientName = builder.Configuration["TodoHttpClientName"];
+Los patrones de ``IoC`` y de `DI` funcionan **increíblemente bien juntos**.
 
-builder.Services.AddHttpClient(
-    httpClientName,
-    client =>
-    {
-        // Set the base address of the named client.
-        client.BaseAddress = new Uri("https://jsonplaceholder.typicode.com/");
+> _In software development, Dependency Injection (DI) and Inversion of Control (IoC) are key architectural patterns used for building maintainable, scalable, and testable applications._
 
-        // Add a user-agent default request header.
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("dotnet-docs");
-    });
-```
+Gracias al `IoC` y al propio funcionamiento de la función `MapGet`, tenemos acceso **en ese momento a**:
 
-En el ejemplo superior 👆, pasamos por parámetro:
-a) El **nombre de la conexión** mediante la variable `httpClientName` (que obtenemos de un fichero llamado
-`appsettings.json` y que desarrollaremos más adelante 🖌️)
-b) El cliente (`client`) que nos permitirá establecer los parámetros de la conexión (como los `headers`).
+1. Todo lo que sea un **servicio registrado** (como lo es ``AvailableOperationsHttpQuery`` gracias a `AddScoped`, que se hace con el `IServiceCollection`)
+2. Y todo lo que sea un **dato vinculable** (``binding``).
 
-``AddHttpClient`` nos da un "cliente en blanco". Entonces, esto nos deja dos opciones: pre-configurarlo en el momento en
-el que le pedimos un cliente a la factoría, o simplemente cogerlo y cada vez que lo usemos, configurar los aspectos
-necesarios.
+> ‼️ En este momento no vamos ahondar en lo que significa ``binding``pero lo veremos más adelante 🧑‍💻.
 
-Vamos a entender primero qué significa **pre-configurar**. Pre-configurar sería lo mismo que decir:
-_"Para esta conexión `httpClientName` quiero establecer una pre-configuración, que será establecer cuál es la Uri por
-defecto (`client.BaseAddress = new Uri("https://jsonplaceholder.typicode.com/");`)_.
-
-En esta línea ``client.BaseAddress = new Uri("https://jsonplaceholder.typicode.com/");`` establecemos una Uri por
-defecto para este cliente, por lo que cada vez que hagamos una conexión con este cliente, accederemos a la misma Uri.
-Si no hiciéramos el paso previo de la pre-configuración, cada vez que iniciáramos una conexión tendríamos que
-especificar la ``BaseAddress``.
-
-Ahora teniendo en cuenta esto, vamos entonces a desarrollar mejor nuestra clase ``ConfigureServices``:
-
-Vamos a cambiar la clase de ``ConfigureServices.cs`` por ``AvailableOperationsHttpQuery.cs``, y vamos a colocar el
-fichero dentro de la carpeta ``AvailableOperations``:
-
-> 🚧 Recuerda eliminar ``ConfigureServices.cs`` si hiciste una copia.
-
-Y ahora vamos a crear la llamada:
-
-```csharp
-namespace c_basic_api.INE.AvailableOperations;
-
-public class AvailableOperationsHttpQuery
-{
-    public void Execute(IServiceCollection services)
-    {
-        services.AddHttpClient("QueryOperationsAvailable",client =>
-        {
-            client.BaseAddress = new Uri("https://servicios.ine.es/wstempus/js/ES/OPERACIONES_DISPONIBLES");
-        });
-    }
-}
-```
 
 > Antes de continuar, vamos a esclarecer una posible duda: ``AddHttpClient`` y ``builder.Configuration``, aunque tras
 > bambalinas hacen lo mismo

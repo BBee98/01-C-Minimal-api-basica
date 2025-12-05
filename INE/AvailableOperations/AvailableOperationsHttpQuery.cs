@@ -7,5 +7,6 @@ public class AvailableOperationsHttpQuery: IQuery<IActivityOperationModel[]>
     public IActivityOperationModel[] Execute(IHttpClientFactory httpClientFactory)
     {
         HttpClient client = httpClientFactory.CreateClient("QueryOperationsAvailable");
+        return Array.Empty<IActivityOperationModel>();
     }
 }
