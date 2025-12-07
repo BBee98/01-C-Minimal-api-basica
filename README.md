@@ -191,10 +191,10 @@ Vamos a basarnos en uno de los objetos que se nos devuelve dentro de esta lista:
 }
 ````
 
-Para definir el modelo de `IActivityOperationModel`:
+Para definir el modelo de `IAvailableOperationsModel`:
 
 ````csharp
-public interface IActivityOperationModel
+public interface IAvailableOperationsModel
 {
     public string Id { get; }
     public string Cod_IOE { get; }
@@ -258,14 +258,14 @@ propiedades**.
 Por tanto, si en nuestra interfaz de C# escribimos:
 
 ````csharp
-public interface IActivityOperationModel
+public interface IAvailableOperationsModel
 {
     public string Id { get; }
 }
 ````
 
 Significa que **solo permitimos obtener la propiedad**, no permitimos modificarla. Y en este caso solo permitimos
-obtenerla porque `ActivityOperationModel` solo pretende ser
+obtenerla porque `AvailableOperationsModel` solo pretende ser
 una **representación en código** del objeto que nos llega desde la petición realizada al INE. En caso de que quisiéramos
 poder modificar alguna propiedad del objeto, sería más adecuado
 crear **otro modelo** que represente **el objeto que almacenamos nosotros, como servidor, en la base de datos** (o donde
@@ -331,6 +331,7 @@ anterior 👆) son **reutilización**, integración con "pool de peticiones" y c
 > 🧑‍💻 Puedes saber más de cómo funciona ``HttpClientFactory`` por su cuenta en este artículo: > 🌏 https://dev.to/airarrazabald/utilizando-httpclient-con-ihttpclientfactory-en-net-6-2iem
 
 > 🦄 https://medium.com/asp-dotnet/why-use-httpclientfactory-1fa857db78de
+> 🦄 https://juliocasal.com/blog/ASP.NET-Core-HttpClient-Tutorial
 
 Lo mejor 💫 es que el uso de esta factoría combina ✨**muy bien**✨ con el uso del patrón CQRS.
 
@@ -523,10 +524,10 @@ la petición), vamos a crear al ejecutor en sí mismo:
 namespace c_basic_api.INE.AvailableOperations;
 using Core.IQuery;
 
-public class AvailableOperationsHttpQuery: IQuery<IActivityOperationModel[]>
+public class AvailableOperationsHttpQuery: IQuery<IAvailableOperationsModel[]>
 
 {
-    public IActivityOperationModel[] Execute(IHttpClientFactory httpClientFactory)
+    public IAvailableOperationsModel[] Execute(IHttpClientFactory httpClientFactory)
     {
         HttpClient client = httpClientFactory.CreateClient("QueryOperationsAvailable");
     }
@@ -543,8 +544,7 @@ Gracias al parámetro de tipo ```IHttpClientFactory``` podemos utilizar un méto
 es otorgarnos una configuración que **ya hemos creado anteriormente mediante otro servicio que aún no hemos visto (``IServiceCollection``).
 
 Este ``CreateClient`` nos permite acceder al resultado obtenido por la petición http, pero más adelante terminaremos de
-desarrollar este punto. De momento
-dejémoslo aquí y hagamos un interludio para ver cómo definimos estas conexiones mediante ``IServiceCollection``.
+desarrollar este punto. De momento, dejémoslo aquí, y expliquemos en su lugar cómo definimos estas conexiones mediante ``IServiceCollection``.
 
 ##### IServiceCollection: ```ConfigureServices```
 
@@ -703,7 +703,7 @@ A nivel de la carpeta ``AvailableOperations`` creemos el fichero:
 c-basic-api/
     └── INE/
         └── AvailableOperations/
-            └── ActivityOperationServices.cs
+            └── AvailableOperationsServices.cs
             └── AvailableOperationsHttpQuery.cs
 ````
 
@@ -712,9 +712,9 @@ Y ahora vamos a añadir el siguiente código:
 ```csharp
 namespace c_basic_api.INE.AvailableOperations;
 
-public static class ActivityOperationServices
+public static class AvailableOperationsServices
 {
-    public static void RegisterActivityOperations(this IServiceCollection serviceCollection)
+    public static void RegisterAvailableOperations(this IServiceCollection serviceCollection)
     {
         serviceCollection.AddHttpClient("QueryOperationsAvailable", client => 
             client.BaseAddress = new Uri(""));
@@ -756,11 +756,11 @@ using c_basic_api.Core;
 
 namespace c_basic_api.INE.AvailableOperations;
 
-public static class ActivityOperationServices
+public static class AvailableOperationsServices
 {
-    public static void RegisterActivityOperations(this IServiceCollection serviceCollection)
+    public static void RegisterAvailableOperationsOperations(this IServiceCollection serviceCollection)
     {
-        serviceCollection.AddScoped<IQuery<IActivityOperationModel[]>, AvailableOperationsHttpQuery>();
+        serviceCollection.AddScoped<IQuery<IAvailableOperationsModel[]>, AvailableOperationsHttpQuery>();
         serviceCollection.AddHttpClient("QueryOperationsAvailable", client => 
             client.BaseAddress = new Uri("https://servicios.ine.es/wstempus/js/ES/OPERACIONES_DISPONIBLES"));
     }
@@ -829,11 +829,11 @@ using c_basic_api.Core;
 
 namespace c_basic_api.INE.AvailableOperations;
 
-public static class ActivityOperationServices
+public static class AvailableOperationsServices
 {
-    public static void RegisterActivityOperations(this IServiceCollection serviceCollection)
+    public static void RegisterAvailableOperations(this IServiceCollection serviceCollection)
     {
-        serviceCollection.AddScoped<IQuery<IActivityOperationModel[]>, AvailableOperationsHttpQuery>();
+        serviceCollection.AddScoped<IQuery<IAvailableOperationsModel[]>, AvailableOperationsHttpQuery>();
         serviceCollection.AddHttpClient("QueryOperationsAvailable", client => 
             client.BaseAddress = new Uri(""));
     }
@@ -851,7 +851,7 @@ app.MapGet("/",) => "Hello World");
 Podemos modificarla para recibir por parámetro la ``DI``:
 
 ```csharp
-app.MapGet("/", (IQuery<IActivityOperationModel[]> availableOperationsQuery, IHttpClientFactory factory) =>
+app.MapGet("/", (IQuery<IAvailableOperationsModel[]> availableOperationsQuery, IHttpClientFactory factory) =>
 {
     availableOperationsQuery.Execute(factory);
 });
@@ -878,216 +878,387 @@ Gracias al `IoC` y al propio funcionamiento de la función `MapGet`, tenemos acc
 
 > ‼️ En este momento no vamos ahondar en lo que significa ``binding``pero lo veremos más adelante 🧑‍💻.
 
+##### Resumen hasta el momento
 
-> Antes de continuar, vamos a esclarecer una posible duda: ``AddHttpClient`` y ``builder.Configuration``, aunque tras
-> bambalinas hacen lo mismo
-> (crear/obtener conexiones), se usan para objetivos diferentes.
-> 1️⃣ ``builder.Configuration``, por un lado, se utiliza para crear las **peticiones** de la API que queramos
-> construir (las peticiones GET, POST, PUT...).
-> Por ejemplo: Cuando creemos una ruta como ``/api/available_operations``, la almacenaremos en el `appsettings.json` y
-> obtendremos a configuración con ``builder.Configuration``.
->
-> 1️⃣ ``AddHttpClient``, por otro, se utiliza para crear **conexiones** (o **llamadas**) a servicios externos (como
-> otras APIs, bases de datos... cualquier servicio que no se encuentre **dentro** del dominio de nuestra aplicación).
-> Por ejemplo: En este tutorial, para obtener la información del INE, la llamada que hagamos a su API la configuraremos
-> en este punto.
+Hasta ahora hemos hecho lo siguiente:
 
+1. Inicializar la aplicación utilizando **Minimal API** y organizando la arquitectura mediante **VSA** (Vertical Slice Architecture).
+2. Crear un modelo que replique el tipo de dato que nos va a dar la API externa que vamos a utilizar (el INE).
+3. Aplicar el patrón `CQRS`.
+4. Hemos utilizado ``IServiceCollection`` para registrar una inyección de dependencia, utilizando `IQuery` como interfaz y `AvailableOperationsHttpQuery` como servicio.
 
-En esta línea:
+##### Pero, ¡no funciona!
 
-```
-string? httpClientName = builder.Configuration["TodoHttpClientName"];
-ArgumentException.ThrowIfNullOrEmpty(httpClientName);
+Si tratamos de levantar la aplicación, y **no funciona** por este mensaje:
+
+```bash
+The service collection cannot be modified because it is read-only
 ```
 
-Se crea una variable llamada ``httpClientName`` donde indicamos que ésta _podría ser_ de tipo `string` (no es un `OR`,
-sino más bien es como decir "creo que esta variable es de tipo `string` pero no estoy seguro).
+Esto es fácil de arreglar 👍 y pasa a menudo. 
+Dentro del archivo ``Program.cs`` tenemos esta instrucción:
 
-Por otro lado, esta instrucción ``builder.Configuration["TodoHttpClientName"]`` dice que "queremos obtener la
-configuración correspondiente a `TodoHttpClientName`".
-
-> ‼️Es importante que aclaremos que `TodoHttpClientName` ahora mismo *no existe en el fichero `appsettings.json`.
-> Simplemente vamos a asumir que esa conexión existe, y más adelante veremos cómo se crea en el fichero en cuestión.
-
-> _En una aplicación ASP.NET Core, builder.Configuration (que es de tipo IConfiguration) es el lugar central donde se
-almacenan todos los ajustes de configuración._ (Fuente: Gemini 2.5 Pro).
-
-Y la pregunta es: **¿De dónde sale esta configuración?**
-
-Si nos fijamos en los ficheros de nuestra aplicación, hay uno llamado ``appsettings.json``.
-
-> 🌏 https://medium.com/@sdbala/net-core-configuration-in-net-8-4a8365f24ff1
-
-Este es su contenido:
-
-````json
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
-    }
-  },
-  "AllowedHosts": "*"
-}
-````
-
-Antiguamente el archivo `appsettings.json` era un archivo `XML` como este:
-
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<configuration>
-    <appSettings>
-        <add key="RetryCount" value="5"/>
-        <add key="QueueLength" value="100"/>
-    </appSettings>
-    <connectionStrings>
-        <add name="MyDatabase"
-             connectionString="Server=myServerAddress;Database=myDataBase;User Id=myUsername;Password=myPassword;"
-             providerName="System.Data.SqlClient"/>
-    </connectionStrings>
-</configuration>
+```csharp
+var app = builder.Build();
 ```
 
-Pero su funcionalidad era realmente la misma. De hecho, en esta línea:
-
-```xml
-
-<connectionStrings>
-    <add name="MyDatabase"
-         connectionString="Server=myServerAddress;Database=myDataBase;User Id=myUsername;Password=myPassword;"
-         providerName="System.Data.SqlClient"/>
-</connectionStrings>
-```
-
-Podemos ver un adelanto de lo que vamos a tener que añadir a nuestro ``json``: El nombre correspondiente a la conexión
-que queremos configurar.
-
-> 🌏 Puedes encontrar más información
-> aquí: https://dotnetfullstackdev.medium.com/appsettings-in-net-core-the-game-changer-for-configurations-a994d842e34c
-
-Por tanto, podemos decir que el fichero ``appsettings.json``:
-
-> _[...] is a JSON-based configuration file used in .NET Core applications to store:_
-> 1. _Connection strings._
-> 2. _API keys._
-> 3. _Application settings._
-> 4. _Environment-specific configurations._
-> 5. _This file supports hierarchical structures, making it easier to organize related settings._
-
-Antes vimos que con esta línea:
-
-```
-string? httpClientName = builder.Configuration["TodoHttpClientName"];
-ArgumentException.ThrowIfNullOrEmpty(httpClientName);
-```
-
-Accedíamos a la configuración definida en el `appsettings.json`.
-
-> ‼️Recordemos que **aún no la hemos configurado como tal, estamos asumiendo que existe**.
-
-La instrucción ``builder.Configuration`` proviene del paquete de Microsoft:
-``using Microsoft.Extensions.Configuration;``.
-
-Vamos a organizar el código un poco mejor para que nos sea más sencillo entender esto.
-
-#### Inicializando la configuración de las conexiones
-
-Si nos fijamos en la fuente de ``medium``:
-
-> https://dotnetfullstackdev.medium.com/appsettings-in-net-core-the-game-changer-for-configurations-a994d842e34c
-
-Tiene creada una clase llamada ``Program`` donde inicializa la configuración de la conexión a la API:
+Y esto es **el cierre total de la configuración** de la aplicación. Eso significa que, tras esta instrucción,
+**no es posible registrar ningún otro servicio**. Es posible que el código haya quedado de alguna manera parecida a esto:
 
 ````csharp
-using Microsoft.Extensions.Configuration;
-using System;
+var app = builder.Build();
 
-class Program
+services.RegisterAvailableOperations();
+````
+
+La línea ``service.RegisterAvailableOperations();``está **registrando un servicio después** de que la aplicación se haya cerrado.
+La solución es simple: hacer todos los registros **antes**:
+
+
+````csharp
+services.RegisterAvailableOperations();
+var app = builder.Build();
+````
+
+#### 3.2.3 Recogiendo los datos
+
+¿Recuerdas este código?
+
+```csharp
+namespace c_basic_api.INE.AvailableOperations;
+using Core.IQuery;
+
+public class AvailableOperationsHttpQuery: IQuery<IAvailableOperationsModel[]>
+
 {
-    static void Main(string[] args)
+    public IAvailableOperationsModel[] Execute(IHttpClientFactory httpClientFactory)
     {
-        var config = new ConfigurationBuilder()
-            .AddJsonFile("appsettings.json")
-            .Build();
+        HttpClient client = httpClientFactory.CreateClient("QueryOperationsAvailable");
+    }
+}
+```
 
-        var appName = config["AppSettings:ApplicationName"];
-        var maxUsers = config["AppSettings:MaxUsers"];
+Lo dejamos aparcado para explicar ``IServiceCollection``, pero ahora que ya tenemos la conexión configurada, toca **utilizarla**, que es lo que nos permite
+``CreateClient``.
 
-        Console.WriteLine($"Application Name: {appName}");
-        Console.WriteLine($"Max Users: {maxUsers}");
+🦄 Al haber definido la conexión previamente con `AddHttpClient`, ésta ha quedado **almacenada** en la factoría `HttpClientFactory`, y **ahora** podemos recuperarla.
+
+Vamos a extender un poco más el código:
+
+
+````csharp
+namespace c_basic_api.INE.AvailableOperations;
+using Core;
+
+public class AvailableOperationsHttpQuery: IQuery<IAvailableOperationsModel[]>
+
+{
+    public IAvailableOperationsModel[] Execute(IHttpClientFactory httpClientFactory)
+    {
+        HttpClient client = httpClientFactory.CreateClient("QueryOperationsAvailable");
+        client.GetAsync("");
+        return Array.Empty<IAvailableOperationsModel>();
     }
 }
 ````
 
-Vamos a hacer algo parecido. Dentro de la carpeta ``Core`` creada anteriormente, vamos a crear un fichero llamado
-`ApiConfiguration.cs`.
+#### 3.2.3.1 Obtener los datos de la petición
+
+##### 3.2.3.1.1 Task, GetAsync y GetAsyncFromJson
+
+###### GetAsync y GetAsyncFromJson
+
+Para obtener los datos de la petición, tenemos dos posibles funciones a utilizar: ``GetAsync`` y ``GetAsyncFromJson``
+
+Cuando creamos la configuración con `AddHttpClient`, una de las cosas que hablamos es que **podíamos establecer una preconfiguración**, y entre las posibilidades
+a preconfigurar, estaba la ``uri``. 👇
+
+> ```csharp
+> client.BaseAddress = new Uri("https://servicios.ine.es/wstempus/js/ES/OPERACIONES_DISPONIBLES"));
+> ```
+
+Eso significa que cuando usemos ``client.GetAsync("")``, **se conectará directamente a la uri que ya especificamos en su momento**, devolviéndonos
+los datos obtenidos en esta petición.
+
+Ahora, vamos a *analizar* las diferencias entre utilizar ``GetAsync`` y ``GetFromJsonAsync``:
+
+- `GetAsync`:
+
+> 🌏 https://learn.microsoft.com/es-es/dotnet/api/system.net.http.httpclient.getasync?view=net-8.0
+
+``GetAsync`` es la manera de afrontar el trabajo **manualmente**, lo cual tiene algunas ventajas y desventajas.
+
+✅ **Ventajas**
+
+- **Te permite acceder a las cabeceras** (los `headers`). Esto es útil cuando accedemos a contenido **paginado**, donde el número total lo sitúan como un parámetro del hader.
+- **Te permite acceder a contenido que no sea JSON**. Aunque hoy en día lo más común es devolver los datos como ``JSON``, hay casos donde no ocurre.
+- **Gestión avanzada de errores**. Mientras que ``GetFromJsonAsync`` lanza una excepción genérica si la recepción fue mala, ``GetAsync``sí que te permite tener una definición 
+más exhaustiva de los errores.
+- **Mejor rendimiento para un volumen de datos grandes**.
+
+❌ **Desventajas**
+
+- **Pesado**. Para procesos que buscamos que sean ligeros, no es una buena opción.
+- **Puede ser un overkill**. Si no necesitamos ninguna de las ventajas que ofrece ``GetAsync``, no es necesario utilizarla.
+
+> 📚 https://learn.microsoft.com/en-us/dotnet/fundamentals/networking/http/httpclient
+
+- `GetFromJsonAsync`:
+
+✅ **Ventajas**
+
+- **Es más ligero que ``GetAsync``**.
+- **El proceso de deserialización y serialización del ``json`` lo hace automáticamente**.
+- **También el proceso de validación del json**
+
+❌ **Desventajas**
+
+Prácticamente son lo que serían las **ventajas** de utilizar ``GetAsync``.
+
+Dependiendo de nuestras intenciones, es mejor utilizar uno u otro, pero para este caso lo más adecuado sería utilizar
+```GetFromJsonAsync```, porque lo otro sería un **overkill**.
+
+Así que vamos a modificar un poco el código:
+
+```csharp
+namespace c_basic_api.INE.AvailableOperations;
+using Core;
+
+public class AvailableOperationsHttpQuery: IQuery<IAvailableOperationsModel[]>
+
+{
+    public IAvailableOperationsModel[] Execute(IHttpClientFactory httpClientFactory)
+    {
+        HttpClient client = httpClientFactory.CreateClient("QueryOperationsAvailable");
+        var response = client.GetFromJsonAsync<IAvailableOperationsModel[]>("");
+        return Array.Empty<IAvailableOperationsModel>();
+    }
+}
+```
+
+‼️Es necesario añadir entre diamantes el tipo que esperamos que se devuelva en la petición.
+
+👀Pero es necesario que hagamos **un cambio más**, y esto tiene que ver con el siguiente punto: ``Task``
+
+###### Task
+
+Tanto``GetAsync`` como ``GetFromJsonAsync`` nos devuelve una ``Task``.
+Explicado por la propia documentación:
+
+Por desgracia, en la documentación oficial de Microsoft la información que se nos da es escasa para lo que necesitamos ahora mismo:
+
+> 🌏 https://learn.microsoft.com/es-es/dotnet/api/system.threading.tasks.task?view=net-8.0
+
+Así que veamos este otro artículo 👇:
+
+> 🌏https://www.c-sharpcorner.com/article/task-and-thread-in-c-sharp/#:~:text=A%20Task%20represents%20some%20asynchronous,the%20use%20of%20cancellation%20tokens.
+
+Si vamos directamente a la definición de ``Task``, nos dice:
+
+> _ Task represents some asynchronous operation and is part of the Task Parallel Library, a set of APIs for running tasks asynchronously and in parallel._
+
+Entonces, una ``Task`` realmente _se parece bastante_ a una ``Promise`` de javascript, ya que ambas nos permiten trabajar **asíncronamente** con datos:
+
+| Concepto | JavaScript / TypeScript | C# |
+| :--- | :--- | :--- |
+| **El Objeto** | `Promise<string>` | `Task<string>` |
+| **Sin retorno** | `Promise<void>` | `Task` |
+| **Esperar** | `await myPromise` | `await myTask` |
+| **Crear función** | `async function getName() { ... }` | `async Task<string> GetName() { ... }` |
+| **Todo a la vez** | `Promise.all([p1, p2])` | `Task.WhenAll(t1, t2)` |
+| **El primero** | `Promise.race([p1, p2])` | `Task.WhenAny(t1, t2)` |
+| **Valor inmediato** | `Promise.resolve("Hola")` | `Task.FromResult("Hola")` |
+
+
+Utilizando ``GetAsync`` no es necesario que especifiquemos entre diamantes, pero con ``GetFromJsonAsync`` sí que lo es.
+
+##### Modificando el código
+
+Ahora que ya sabemos que tanto ``GetAsync`` como ``GetFromJsonAsync`` nos devuelven una ``Task``, tenemos que modificar nuestra intefaz
+`IQuery` para que refleje esto:
+
+`````csharp
+namespace c_basic_api.Core;
+
+public interface IQuery<T>
+{
+    public Task<T> Execute(IHttpClientFactory httpClientFactory);
+}
+`````
+
+Y lo mismo con `AvailableOperationsHttpQuery`:
+
+````csharp
+namespace c_basic_api.INE.AvailableOperations;
+using Core;
+
+public class AvailableOperationsHttpQuery: IQuery<IAvailableOperationsModel[]>
+
+{
+    public async Task<IAvailableOperationsModel[]> Execute(IHttpClientFactory httpClientFactory)
+    {
+        HttpClient client = httpClientFactory.CreateClient("QueryOperationsAvailable");
+        var response = await client.GetFromJsonAsync<IAvailableOperationsModel[]>("");
+        Console.WriteLine("RESPONSE =====> " + response);
+        
+        return Array.Empty<IAvailableOperationsModel>();
+    }
+}
+````
+
+Hasta ahora no nos hemos propuesto mucho levantar la aplicación, pero si lo hacemos, veremos un **error garrafal**:
+
+````bash
+NotSupportedException: Deserialization of interface or abstract types is not supported. Type 'IAvailableOperationsModel'.
+````
+
+¡Vaya! 😔 Esto ocurre porque al querer _deserializar_ el objeto, le estamos **pasando una ``interfaz``** en lugar de una clase.
+Tiene fácil arreglo. Lo que necesitamos es crear, justamente, un ``DTO``.
+
+Es decir, esta línea:
+
+```csharp
+        var response = await client.GetFromJsonAsync<IAvailableOperationsModel[]>("");
+```
+
+Es ❌ **incorrecta**. Veamos, entonces, cómo implementar el ``DTO`` para poder des-serializar el `json` correctamente. 
+
+#### 3.2.4 El ``DTO``
+
+> https://arquitectosinbloques.wordpress.com/2017/09/06/usando-el-patron-dto-en-net/
+
+¿Qué es un ``DTO``? Sus siglas significan ``Data Transfer Object``, y lo que quiere decir es, básicamente, "transformar un objeto
+a otro". Cuando creamos la interfaz ``IAvailableOperationsModel``, lo hicimos, precisamente, porque necesitábamos una **representación** a nivel de nuestra aplicación
+de los datos que **íbamos a obtener desde fuera**, pero **no llegamos a crear el transformador en sí**.
+
+> 🌏 https://medium.com/@20011002nimeth/understanding-data-transfer-objects-dtos-in-c-net-best-practices-examples-fe3e90238359
+> 🌏 https://learn.microsoft.com/es-es/aspnet/web-api/overview/data/using-web-api-with-entity-framework/part-5
+
+Dentro de la carpeta ``AvailableOperations`` vamos a crear el fichero ``AvailableOperationsDTO``:
 
 ````csharp
 c-basic-api/
-    └── Core/
-        └── ConfigureServices.cs
-        └── ApiConfiguration.cs
+    └── AvailableOperations/
+        └── AvailableOperationsDTO.cs
+        └── AvailableOperationsServices.cs
+        └── AvailableOperationsHttpQuery.cs
 [...]
 ````
 
-Y dentro de ``ApiConfiguration.cs``, creamos la siguiente clase:
+Y vamos a añadir el siguiente código:
 
-```csharp
-namespace c_basic_api.Core.Configuration;
-using Microsoft.Extensions.Configuration;
+````csharp
+namespace c_basic_api.INE.AvailableOperations;
 
-public class ApiConfiguration
+public class AvailableOperationsDTO: IAvailableOperationsModel
 {
-    public static void Start(IConfiguration builder) {
-
-
-    }
+    public string Id { get; set; } = "";
+    public string Cod_IOE { get; set; } = "";
+    public string Nombre { get; set; } = "";
+    public string Codigo { get; set; } = "";
+    
 }
-```
+````
 
-> ‼️Cuando inicializamos el programa desde ``Program.cs`` y se llega a esta línea:
-> ```var builder = WebApplication.CreateBuilder(args)```
-> El fichero `appsettings.json` y la configuración **ya han sido cargadas**. Por tanto, lo que realmente queremos hacer
-> desde
-> ``ApiConfiguration.cs`` es **acceder a esa configuración y extraer los datos que queremos**.
+#### 3.2.5 Últimos ajustes
 
+Antes de continuar, necesitamos hacer unos **cambios en el código**.
 
-Ahora, vamos a añadir la conexión que queremos hacer a ``appsettings.json``:
+Una de las ventajas que tiene el ``DTO`` es que **hace automáticamente la traducción de los datos `json` al objeto DTO**, pero para ello
+**las propiedades deben llamarse de la misma manera que las propiedades del objeto ``json``**.
 
-```json
+Lo que nos devuelve la petición del INE es un objeto con estas propiedades:
+
+````json
+  {
+    "Id": 4,
+    "Cod_IOE": "30147",
+    "Nombre": "Estadística de Efectos de Comercio Impagados",
+    "Codigo": "EI"
+  },
+````
+
+Por lo que debemos cambiar el nombre de las propiedades ``Name`` por `Nombre`, y `Code` por `Codigo`, quedando el resultado así:
+
+- `DTO`
+````csharp
+namespace c_basic_api.INE.AvailableOperations;
+
+public class AvailableOperationsDTO: IAvailableOperationsModel
 {
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
-    }
-  },
-  "INEApi": {
-    "AvailableOperations": "https://servicios.ine.es/wstempus/js/ES/OPERACIONES_DISPONIBLES"
-  },
-  "AllowedHosts": "*"
+    public int Id { get; set; }
+    public string Cod_IOE { get; set; } = "";
+    public string Nombre { get; set; } = "";
+    public string Codigo { get; set; } = "";
 }
-```
+````
 
+- `Interface`
 
-Ahora vamos a desarrollar la petición:
-
-```csharp
-namespace c_basic_api.Core.Configuration;
-using Microsoft.Extensions.Configuration;
-
-public class ApiConfiguration
+````csharp
+public interface IAvailableOperationsModel
 {
-    public static void Start(IConfiguration configuration)
+    public int Id { get; set; }
+    public string Cod_IOE { get; set; }
+    public string Nombre { get; set; }
+    public string Codigo { get; set; }
+}
+````
+
+Ahora, ajustamos el código del servicio:
+
+````csharp
+namespace c_basic_api.INE.AvailableOperations;
+using Core;
+
+public class AvailableOperationsHttpQuery: IQuery<IAvailableOperationsModel[]>
+
+{
+    public async Task<IAvailableOperationsModel[]> Execute(IHttpClientFactory httpClientFactory)
     {
-        string? url = configuration["INEApi:AvailableOperations"];
-        
+        HttpClient client = httpClientFactory.CreateClient("QueryAvailableOperations");
+        var json = await client.GetFromJsonAsync<List<AvailableOperationsDTO>>("");
+        if (json is not null)
+        {
+            return json.ToArray<IAvailableOperationsModel>();
+        }
+        return Array.Empty<IAvailableOperationsModel>();
     }
 }
-```
+````
 
-> 👉``string? url = configuration["INEApi:AvailableOperations"];``
+☝️ Es importante que comprobemos que la respuesta entregada por la petición **no es nula**.
 
+> 🌏https://www.thomasclaudiushuber.com/2020/03/12/c-different-ways-to-check-for-null/
 
-Ahora ya tenemos acceso a la url de la API del INE, pero nos falta hacer la conexión.
+> En esta pequeña API **no hemos hecho ninguna gestión de errores** a nivel de petición. Vamos a asumir únicamente el
+> **happy path**. Estudiaremos las gestiones de errores en futuros tutoriales.
+
+También es necesario que utilicemos ``ToArray<IAvailableOperationsModel>()`` porque es una manera de indicarle de manera explícita a C# que,
+efectivamente, estamos creando una lista del tipo ``IAvailableOperationsModel``. Entonces funciona como una "doble aseguración" de tipos 👍.
+
+Ahora, solo queda devolver la respuesta en la función ``MapGet``:
+
+````csharp
+app.MapGet("/", (IQuery<IAvailableOperationsModel[]> availableOperationsQuery, IHttpClientFactory factory) => availableOperationsQuery.Execute(factory));
+````
+
+¡Y listo 🥳!
+
+Ahora, si hacemos una llamada desde Postman (o el navegador) a ```http://localhost:5124/``` veremos el resultado de la petición hecha a la misma url que ``https://servicios.ine.es/wstempus/js/ES/OPERACIONES_DISPONIBLES``.
+
+### 4. Resumen
+
+En esta mini-api, hemos visto:
+
+1. Cómo crear una ``Minimal API`` con `.NET`.
+2. Cómo crear rutas (concretamente, una ruta ``GET``).
+3. Cómo gestionar una arquitectura basada en ``VSA`` (Vertical Slice Architecture).
+4. Cómo crear un cliente con ``.NET`` y utilizarlo para realizar peticiones.
+5. Cómo utilizar el patrón ``CQRS`` en `#C`.
+6. Cómo registrar una inyección de dependencia (``DI``).
+7. Cómo utilizar el patrón ```CQRS``` junto con ``DI`` en `C#`.
+8. Cómo crear una interfaz en ``C#``.
+9. Cómo crear un ``DTO`` en ``C#``.
+10. Cómo recibir los datos a partir de una petición ``http`` (``GetFromJsonAsync`` y ``GetAsync``).
+11. Cómo transformar los datos obtenidos de la petición ``http`` a un objeto ``DTO``.

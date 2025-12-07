@@ -1,6 +1,6 @@
 namespace c_basic_api.Core;
 
-public interface IQuery<out T>
+public interface IQuery<T>
 {
-    public T Execute(IHttpClientFactory httpClientFactory);
+    public Task<T> Execute(IHttpClientFactory httpClientFactory);
 }
